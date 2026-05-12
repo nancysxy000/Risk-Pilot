@@ -270,6 +270,10 @@ python -m src.stage3_sandbox.evaluator --rules outputs/generated_rules.json
 | Yelp      | ~45K    | ~3.8M   | ~6.7%   | 32      | DGL Built-in |
 | Amazon    | ~11K    | ~4.4M   | ~9.5%   | 25      | DGL Built-in |
 
+**数据集下载**: [Google Drive](https://drive.google.com/drive/folders/1PpNwvZx_YRSCDiHaBUmRIS3x1rZR7fMr)
+
+下载后将数据集文件放入 `dataset/` 目录下即可。
+
 ---
 
 ## 评估指标
