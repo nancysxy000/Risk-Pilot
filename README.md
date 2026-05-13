@@ -245,34 +245,183 @@ independent-project/
 
 ## 快速开始
 
+### Step 1: 安装依赖
+
 ```bash
-# 1. 安装依赖
-pip install -r requirements.txt
-
-# 2. 运行完整 Pipeline
-python -m src.pipeline --dataset tfinance --mode full
-
-# 3. 单独运行 GNN 感知层
-python -m src.stage1_gnn.train --dataset tfinance --epochs 100
-
-# 4. 单独运行沙盒回测
-python -m src.stage3_sandbox.evaluator --rules outputs/generated_rules.json
+conda activate riskpilot
+pip install -r requirements.txt --index-url https://pypi.org/simple/
 ```
 
+### Step 2: 配置 API Key (可选)
+
+```bash
+cp .env.example .env
+# 编辑 .env，填入你的 API Key
+```
+
+`.env.example` 模板:
+
+```bash
+# ===== LLM API (Stage 2: 规则生成) =====
+# 支持 OpenAI / Azure OpenAI / 本地 Ollama
+OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# 默认 OpenAI 官方，可切换为其他兼容接口:
+# OPENAI_BASE_URL=https://api.openai.com/v1              # OpenAI 官方
+# OPENAI_BASE_URL=https://your-endpoint.openai.azure.com/ # Azure OpenAI
+# OPENAI_BASE_URL=http://localhost:11434/v1               # 本地 Ollama (免费)
+
+# ===== Embedding API (Stage 4: 规则向量化, 可选) =====
+# 不配置则使用 ChromaDB 本地 embedding
+# OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+```
+
+> **不配置 API 也能运行**：Stage 2 会自动使用 Mock 规则走完全流程，Stage 1 (GNN) 和 Stage 3 (沙盒回测) 均为真实计算。
+
+### Step 3: 运行
+
+```bash
+# 完整 Pipeline (GNN → LLM → 沙盒 → 知识库)
+python -m src.pipeline --dataset tfinance --mode full
+
+# 仅运行 GNN 感知层 (不需要 API)
+python -m src.pipeline --dataset tfinance --mode gnn_only
+
+# 切换数据集
+python -m src.pipeline --dataset yelp --mode full
+python -m src.pipeline --dataset amazon --mode full
+```
 ---
 
 ## 数据集
 
-| 数据集     | 节点数   | 边数      | 异常比例 | 特征维度 | 来源          |
-|-----------|---------|----------|---------|---------|--------------|
-| T-Finance | ~40万   | ~80万    | ~4.6%   | 10      | ICML 2022    |
-| T-Social  | ~570万  | ~7300万  | ~3.0%   | 2       | ICML 2022    |
-| Yelp      | ~45K    | ~3.8M   | ~6.7%   | 32      | DGL Built-in |
-| Amazon    | ~11K    | ~4.4M   | ~9.5%   | 25      | DGL Built-in |
+| 数据集     | 节点数    | 边数       | 异常比例 | 特征维度 | 来源          |
+|-----------|----------|-----------|---------|---------|--------------|
+| T-Finance | 39,357   | 42,445,086 | 4.58%   | 10      | ICML 2022    |
+| T-Social  | 5,781,065 | 73,105,508 | 3.01%   | 2       | ICML 2022    |
+| Yelp      | 45,954   | 3,846,979  | 6.67%   | 32      | DGL Built-in |
+| Amazon    | 11,944   | 4,398,392  | 9.50%   | 25      | DGL Built-in |
 
-**数据集下载**: [Google Drive](https://drive.google.com/drive/folders/1PpNwvZx_YRSCDiHaBUmRIS3x1rZR7fMr)
+### 各数据集运行方案
 
-下载后将数据集文件放入 `dataset/` 目录下即可。
+#### T-Finance (推荐首选)
+```bash
+# 需要手动下载数据集
+python -m src.pipeline --dataset tfinance --mode full
+```
+- **数据准备**: 从 [Google Drive](https://drive.google.com/drive/folders/1PpNwvZx_YRSCDiHaBUmRIS3x1rZR7fMr) 下载 `tfinance` 文件，放入 `dataset/` 目录
+- **算力要求**: Mac CPU 约 3~5 分钟，内存 ≥ 2GB
+- **推荐参数**: `hidden_dim=64, order=2, epochs=100` (默认配置即可)
+- **适用场景**: 开发调试、论文实验、完整 Pipeline 演示
+
+#### Yelp (欺诈评论检测)
+```bash
+# 自动从 DGL 下载，无需手动准备
+python -m src.pipeline --dataset yelp --mode full
+```
+- **数据准备**: 首次运行自动下载 (~150MB)，后续使用缓存
+- **算力要求**: Mac CPU < 1 分钟，内存 < 1GB
+- **推荐参数**: `hidden_dim=64, order=2, epochs=100`
+- **注意**: 支持异构图模式 (`homo=false`)，修改 `configs/default.yaml`:
+  ```yaml
+  dataset:
+    name: "yelp"
+    homo: false  # 使用异构图版本 BWGNN_Hetero
+  ```
+
+#### Amazon (虚假评论检测)
+```bash
+# 自动从 DGL 下载
+python -m src.pipeline --dataset amazon --mode full
+```
+- **数据准备**: 首次运行自动下载 (~30MB)
+- **算力要求**: Mac CPU < 1 分钟，内存 < 1GB
+- **推荐参数**: `hidden_dim=64, order=2, epochs=100`
+- **注意**: 前 3305 个节点无特征，代码已自动跳过
+
+#### T-Social (大规模社交网络)
+```bash
+# 需要手动下载数据集，谨慎使用
+python -m src.pipeline --dataset tsocial --mode full
+```
+- **数据准备**: 从 [Google Drive](https://drive.google.com/drive/folders/1PpNwvZx_YRSCDiHaBUmRIS3x1rZR7fMr) 下载 `tsocial` 文件
+- **算力要求**: 内存 ≥ 16GB，CPU 训练约 30~60 分钟
+- **推荐参数**: `hidden_dim=10, order=5, epochs=100` (特征维度仅 2，需更高阶小波)
+  ```yaml
+  dataset:
+    name: "tsocial"
+  gnn:
+    hidden_dim: 10
+    order: 5
+  ```
+- **注意**: 570 万节点，Mac 8GB 内存可能不够，建议在 16GB+ 机器上运行
+
+#### 自定义数据集
+如需接入自己的数据，在 `src/stage1_gnn/dataset_loader.py` 的 `GraphDataset.__init__` 中添加新的数据集分支：
+```python
+elif name == 'your_dataset':
+    graph, _ = load_graphs('dataset/your_dataset')
+    graph = graph[0]
+    # 确保有 graph.ndata['feature'] 和 graph.ndata['label']
+```
+要求:
+- 节点特征: `graph.ndata['feature']` — float tensor `[N, F]`
+- 节点标签: `graph.ndata['label']` — long tensor `[N]`，0=正常，1=异常
+
+---
+
+## 实际运行结果 (tfinance 数据集)
+
+以下为在 T-Finance 数据集上运行完整 Pipeline 的输出示例。
+
+### Stage 1: GNN 风险洞察 (`outputs/risk_insights.json`)
+
+GNN 从 39,357 个节点中检测出 **500 个高风险节点**，聚类为 **5 种风险模式**：
+
+| 聚类 ID | 节点数 | 平均度数 | 局部密度 | 异常分数 | 风险描述 |
+|---------|--------|---------|---------|---------|---------|
+| Cluster 0 | 37 | 1,131 | 0.871 | 1.000 | 高连接度密集子图，疑似集团欺诈核心 |
+| Cluster 1 | 305 | 594 | 0.453 | 1.000 | 大规模有组织行为，中高连接度欺诈环 |
+| Cluster 2 | 10 | 1,133 | 0.844 | 1.000 | 高连接度 + 特征维度 0 显著偏高 |
+| Cluster 3 | 16 | 1,130 | 0.742 | 1.000 | 密集连接的小型欺诈团伙 |
+| Cluster 4 | 132 | 879 | 0.669 | 1.000 | 中大规模协同异常行为 |
+
+**关键发现**:
+- 所有异常聚类均呈现**高连接度 + 高局部密度**特征，符合金融欺诈中"集团作案"的典型图结构模式
+- Cluster 2 在特征维度 0 上 z-score 达 1.68，表明该类异常在交易金额/频率上有显著偏离
+
+### Stage 2: LLM 规则生成 (`outputs/generated_rules.json`)
+
+基于 GNN 洞察，LLM 自动生成了 **2 条风控规则** (当前为 mock 模式，接入真实 LLM 后会更丰富)：
+
+| 规则 ID | 名称 | 条件 | 动作 | 目标风险类型 |
+|---------|------|------|------|------------|
+| R-20260512-001 | 高度数异常交易检测 | `degree > 50 AND feature_0 > 2.0` | review | 集团欺诈 |
+| R-20260512-002 | 孤立高风险账户检测 | `degree < 5 AND feature_1 > 3.0` | alert | 盗刷 |
+
+### Stage 3: 沙盒回测结果 (`outputs/evaluation_report.json`)
+
+| 规则 | Recall | Precision | FPR | F1 | 是否合格 |
+|------|--------|-----------|-----|-----|---------|
+| 高度数异常交易检测 | 90.6% | 4.9% | 83.9% | 0.094 | **否** (FPR 过高) |
+| 孤立高风险账户检测 | 0.5% | 1.8% | 1.3% | 0.008 | **否** (Recall 过低) |
+| **组合 (OR)** | **91.1%** | **4.9%** | **85.1%** | — | — |
+
+**分析**:
+- 规则 1 召回率高 (90.6%) 但误杀率极高 (83.9%)——阈值 `degree > 50` 过于宽松，需要收紧
+- 规则 2 虽然误杀率低但几乎没有召回——条件过于苛刻
+- 这是 Mock 规则的预期表现；接入真实 LLM 后，系统会通过**闭环迭代自动优化**阈值，直到达标 (F1 > 0.6, FPR < 5%)
+
+### 输出文件说明
+
+| 文件 | 说明 | 生成阶段 |
+|------|------|---------|
+| `outputs/gnn_predictions.pt` | 每个节点的异常概率 `[N, 2]`，`[:, 1]` 为异常分数 | Stage 1 |
+| `outputs/node_embeddings.pt` | 每个节点的 GNN 嵌入向量 `[N, hidden_dim]` | Stage 1 |
+| `outputs/risk_insights.json` | 结构化风险洞察: 聚类 + 图结构特征 + 自然语言描述 | Stage 1 |
+| `outputs/generated_rules.json` | LLM 生成的风控规则 (JSON 格式) | Stage 2 |
+| `outputs/evaluation_report.json` | 沙盒回测指标: TP/FP/FN/TN, Recall, Precision, FPR | Stage 3 |
+| `outputs/qualified_rules.json` | 通过回测的优质规则 (沉淀至知识库) | Stage 4 |
 
 ---
 

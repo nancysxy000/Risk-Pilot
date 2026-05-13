@@ -5,6 +5,22 @@ RiskPilot — 主 Pipeline 编排
   Stage 1 (GNN 感知) → Stage 2 (LLM 策略) → Stage 3 (沙盒验证) → Stage 4 (规则沉淀)
   ↑                                                                      │
   └──────────────────── 闭环反馈 (知识库 RAG) ──────────────────────────────┘
+
+运行方式:
+  python -m src.pipeline --dataset tfinance --mode full
+
+输出文件 (outputs/ 目录):
+  - gnn_predictions.pt      Stage 1 → 每个节点的异常概率 [N, 2]
+  - node_embeddings.pt      Stage 1 → 节点嵌入向量 [N, hidden_dim]
+  - risk_insights.json      Stage 1 → 结构化风险洞察 (5 种风险模式)
+  - generated_rules.json    Stage 2 → LLM 生成的风控规则
+  - evaluation_report.json  Stage 3 → 沙盒回测指标 (Recall/Precision/FPR)
+  - qualified_rules.json    Stage 4 → 通过回测的优质规则
+
+tfinance 数据集运行结果:
+  - GNN 检测到 500 个高风险节点 (Top-K)，聚类为 5 种异常模式
+  - Mock 模式生成 2 条规则，均因 FPR 过高或 Recall 过低未通过
+  - 接入真实 LLM 后，闭环迭代会自动优化规则直到达标
 """
 
 import os

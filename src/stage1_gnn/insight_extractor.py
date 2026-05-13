@@ -2,10 +2,16 @@
 Stage 1.3: 风险洞察提取 — 将 GNN 的数值输出转化为 LLM 可理解的结构化描述
 
 这是 Nancy 部分的 **核心创新模块**:
-- 从 GNN 输出中提取高风险节点
-- 对异常节点嵌入进行聚类，发现不同的风险模式
+- 从 GNN 输出中提取高风险节点 (基于异常概率阈值 + Top-K)
+- 对异常节点嵌入进行 KMeans 聚类，发现不同的风险模式
 - 分析每个风险聚类的图结构特征 (度、连通性、局部密度等)
-- 输出结构化的 risk_insights.json，供 LLM 策略层使用
+- 输出结构化的 risk_insights.json，供 LLM 策略层消费
+
+输出示例 (tfinance 数据集):
+  - 检测到 500 个高风险节点，聚类为 5 种风险模式
+  - Cluster 0: 37 节点, 平均度数 1131, 密度 0.87 → "高连接度密集子图，疑似集团欺诈"
+  - Cluster 1: 305 节点, 平均度数 594, 密度 0.45 → "大规模有组织行为"
+  - Cluster 2: 10 节点, 特征维度 0 的 z-score=1.68 → "特征异常的高连接度小团伙"
 """
 
 import json
@@ -91,7 +97,20 @@ class InsightExtractor:
         return cluster_labels
 
     def _analyze_cluster(self, graph, cluster_nodes, anomaly_scores, embeddings, cluster_id):
-        """分析单个风险聚类的图结构特征"""
+        """
+        分析单个风险聚类的图结构特征
+
+        对每个聚类计算:
+        1. 度统计 (mean/max/min/std) — 判断是"高连接核心"还是"孤立账户"
+        2. 局部子图密度 — 密度 > 0.3 说明是紧密的欺诈环
+        3. 特征 z-score — 找出哪些特征维度在该聚类中显著异常 (|z| > 1.5)
+        4. 自然语言描述 — 供 LLM 理解风险模式
+
+        输出示例 (Cluster 0):
+          度统计: mean=1131, max=1820 → 高连接度
+          密度: 0.87 → 密集子图
+          描述: "37 anomalous nodes, high connectivity, potential fraud ring"
+        """
         node_list = cluster_nodes.tolist()
 
         # 度统计

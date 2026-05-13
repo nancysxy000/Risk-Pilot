@@ -1,5 +1,17 @@
 """
 Stage 1: GNN 模型训练 — 异常检测与嵌入提取
+
+本模块负责:
+1. 加载金融交易图数据 (tfinance 等)
+2. 训练 BWGNN 模型进行节点级异常检测
+3. 输出异常预测概率 → gnn_predictions.pt
+4. 输出节点嵌入向量  → node_embeddings.pt
+   (嵌入向量将传递给 insight_extractor.py 做聚类分析)
+
+数据集说明:
+- tfinance: 39,357 节点 / 42,445,086 边 / 10 维特征 / 异常比例 4.58%
+  节点 = 账户/交易实体，边 = 交易关系，标签由论文作者标注 (ICML 2022)
+- 标签来源: graph.ndata['label'] — 数据集自带，0=正常, 1=异常(欺诈)
 """
 
 import os
@@ -14,6 +26,7 @@ from sklearn.metrics import (
     f1_score, recall_score, precision_score, roc_auc_score
 )
 
+# 屏蔽 sklearn 在早期 epoch 中因无预测样本产生的 UndefinedMetricWarning
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 
 from .bwgnn_model import BWGNN, BWGNN_Hetero
@@ -21,7 +34,13 @@ from .dataset_loader import GraphDataset
 
 
 def get_best_f1(labels, probs):
-    """通过阈值搜索获取最佳 Macro-F1"""
+    """
+    通过阈值搜索获取最佳 Macro-F1
+
+    因为异常检测任务中正负样本极度不平衡 (正常:异常 ≈ 20:1)，
+    默认 0.5 阈值效果差，需要搜索最优阈值。
+    在 [0.05, 0.95] 区间以 0.05 为步长搜索，返回最佳 F1 和对应阈值。
+    """
     best_f1, best_thre = 0, 0
     for thres in np.linspace(0.05, 0.95, 19):
         preds = np.zeros_like(labels)
@@ -34,7 +53,13 @@ def get_best_f1(labels, probs):
 
 
 class GNNTrainer:
-    """GNN 异常检测训练器"""
+    """
+    GNN 异常检测训练器
+
+    完整流程:
+      load_data() → build_model() → train() → save_outputs()
+      输出: gnn_predictions.pt, node_embeddings.pt
+    """
 
     def __init__(self, config):
         self.config = config
@@ -43,7 +68,13 @@ class GNNTrainer:
         self.dataset = None
 
     def load_data(self):
-        """加载数据集"""
+        """
+        加载数据集
+
+        从 DGL 二进制文件加载图结构，读取节点特征和标签。
+        数据集中的异常比例 (如 tfinance 的 4.58%) 来自 graph.ndata['label'] 统计，
+        这些标签是数据集发布时已标注好的真实欺诈标记。
+        """
         ds_cfg = self.config['dataset']
         self.dataset = GraphDataset(
             name=ds_cfg['name'],
@@ -53,16 +84,22 @@ class GNNTrainer:
             anomaly_std=ds_cfg.get('anomaly_std'),
         )
         self.graph = self.dataset.graph
-        self.dataset.summary()
+        self.dataset.summary()  # 打印: 节点数、边数、异常比例等统计信息
         return self.dataset
 
     def build_model(self):
-        """构建 BWGNN 模型"""
+        """
+        构建 BWGNN 模型
+
+        - BWGNN: 同构图版本，适用于 tfinance / tsocial
+        - BWGNN_Hetero: 异构图版本，适用于 yelp / amazon
+        模型参数量约 10 万，CPU 上即可训练。
+        """
         gnn_cfg = self.config['gnn']
-        in_feats = self.graph.ndata['feature'].shape[1]
-        h_feats = gnn_cfg['hidden_dim']
-        num_classes = 2
-        d = gnn_cfg['order']
+        in_feats = self.graph.ndata['feature'].shape[1]  # 特征维度 (tfinance=10)
+        h_feats = gnn_cfg['hidden_dim']   # 隐藏层维度 (默认 64)
+        num_classes = 2                    # 二分类: 正常 / 异常
+        d = gnn_cfg['order']              # Beta 小波阶数 (默认 2，产生 d+1=3 个基)
 
         if self.config['dataset']['homo']:
             self.model = BWGNN(in_feats, h_feats, num_classes, self.graph, d=d)
@@ -74,19 +111,27 @@ class GNNTrainer:
         return self.model
 
     def train(self):
-        """训练模型，返回最佳指标和训练好的模型"""
-        gnn_cfg = self.config['gnn']
-        features = self.graph.ndata['feature']
-        labels = self.graph.ndata['label']
+        """
+        训练模型，返回最佳指标和训练好的模型
 
-        # 数据划分
+        训练策略:
+        - 数据划分: 40% 训练 / 20% 验证 / 40% 测试 (分层抽样保持异常比例)
+        - 损失函数: 加权交叉熵，权重 = 正常样本数/异常样本数 (约 20x)，缓解类别不平衡
+        - 早停: 基于验证集 Macro-F1 保存最佳模型
+        - 输出指标: Recall, Precision, Macro-F1, AUC
+        """
+        gnn_cfg = self.config['gnn']
+        features = self.graph.ndata['feature']  # [N, feat_dim] 节点特征矩阵
+        labels = self.graph.ndata['label']      # [N] 节点标签: 0=正常, 1=异常
+
+        # ---- 数据划分 (分层抽样) ----
         index = list(range(len(labels)))
         if self.config['dataset']['name'] == 'amazon':
-            index = list(range(3305, len(labels)))
+            index = list(range(3305, len(labels)))  # Amazon 数据集前 3305 个节点无特征
 
         train_ratio = self.config['dataset']['train_ratio']
         idx_train, idx_rest, y_train, y_rest = train_test_split(
-            index, labels[index], stratify=labels[index],
+            index, labels[index], stratify=labels[index],  # stratify: 保持正负样本比例一致
             train_size=train_ratio, random_state=42, shuffle=True
         )
         idx_valid, idx_test, y_valid, y_test = train_test_split(
@@ -94,6 +139,7 @@ class GNNTrainer:
             test_size=0.67, random_state=42, shuffle=True
         )
 
+        # 创建 mask 矩阵标记训练/验证/测试节点
         train_mask = torch.zeros(len(labels)).bool()
         val_mask = torch.zeros(len(labels)).bool()
         test_mask = torch.zeros(len(labels)).bool()
@@ -103,7 +149,9 @@ class GNNTrainer:
 
         print(f"Train/Val/Test: {train_mask.sum()}/{val_mask.sum()}/{test_mask.sum()}")
 
-        # 类别不平衡权重
+        # ---- 类别不平衡处理 ----
+        # weight = 正常样本数 / 异常样本数，用于加权交叉熵损失
+        # 例如 tfinance: weight ≈ 20.8，意味着异常样本的 loss 权重是正常的 20.8 倍
         weight = (1 - labels[train_mask]).sum().item() / labels[train_mask].sum().item()
         print(f"Class weight (neg/pos): {weight:.2f}")
 
@@ -111,31 +159,34 @@ class GNNTrainer:
         best_f1 = 0.
         best_metrics = {}
 
+        # ---- 训练循环 (带 tqdm 进度条) ----
         t_start = time.time()
         pbar = tqdm(range(gnn_cfg['epochs']), desc="Training", unit="epoch",
                     bar_format='{l_bar}{bar:30}{r_bar}')
 
         for epoch in pbar:
-            # ---- Train ----
+            # ---- 前向传播 + 反向传播 ----
             self.model.train()
-            logits = self.model(features)
+            logits = self.model(features)  # [N, 2] 每个节点的 logits
             loss = F.cross_entropy(
                 logits[train_mask], labels[train_mask],
-                weight=torch.tensor([1., weight])
+                weight=torch.tensor([1., weight])  # 异常类权重放大
             )
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-            # ---- Eval ----
+            # ---- 验证集评估 ----
             self.model.eval()
             with torch.no_grad():
-                probs = logits.softmax(1)
+                probs = logits.softmax(1)  # [N, 2] 转为概率，[:, 1] 为异常概率
+            # 搜索最优阈值下的 Macro-F1
             f1, thres = get_best_f1(labels[val_mask].numpy(), probs[val_mask].numpy())
 
             preds = np.zeros_like(labels.numpy())
-            preds[probs[:, 1].numpy() > thres] = 1
+            preds[probs[:, 1].numpy() > thres] = 1  # 用最优阈值生成预测
 
+            # ---- 保存最佳模型 (基于验证集 F1) ----
             if f1 > best_f1:
                 best_f1 = f1
                 best_metrics = {
@@ -147,10 +198,9 @@ class GNNTrainer:
                     'test_auc': roc_auc_score(labels[test_mask], probs[test_mask][:, 1].numpy()),
                     'threshold': thres,
                 }
-                # 保存最佳模型参数
                 best_state = {k: v.clone() for k, v in self.model.state_dict().items()}
 
-            # 更新进度条信息
+            # 进度条实时显示: loss / 当前 F1 / 历史最佳 F1
             pbar.set_postfix({
                 'loss': f'{loss:.4f}',
                 'val_F1': f'{f1:.4f}',
@@ -169,16 +219,31 @@ class GNNTrainer:
         return best_metrics
 
     def get_predictions(self):
-        """获取全量节点的异常预测分数"""
+        """
+        获取全量节点的异常预测分数
+
+        Returns:
+            probs: [N, 2] tensor
+              - probs[:, 0] = 正常概率
+              - probs[:, 1] = 异常概率 (用于排序和阈值判定)
+        输出文件: outputs/gnn_predictions.pt
+        """
         self.model.eval()
         with torch.no_grad():
             features = self.graph.ndata['feature']
             logits = self.model(features)
             probs = logits.softmax(1)
-        return probs  # [N, 2]: [:, 1] 为异常概率
+        return probs
 
     def get_embeddings(self):
-        """获取全量节点的嵌入向量 (传递给 Stage 1.3 洞察提取)"""
+        """
+        获取全量节点的嵌入向量
+
+        嵌入向量是 BWGNN 倒数第二层的输出 [N, hidden_dim]，
+        编码了节点的结构特征和属性特征，将传递给 InsightExtractor
+        做 KMeans 聚类，发现不同的异常模式。
+        输出文件: outputs/node_embeddings.pt
+        """
         self.model.eval()
         with torch.no_grad():
             features = self.graph.ndata['feature']
@@ -186,7 +251,14 @@ class GNNTrainer:
         return embeddings
 
     def save_outputs(self, output_dir='outputs/'):
-        """保存预测结果和嵌入向量"""
+        """
+        保存预测结果和嵌入向量到磁盘
+
+        输出:
+          - outputs/gnn_predictions.pt  — 异常概率 [N, 2]
+          - outputs/node_embeddings.pt  — 节点嵌入 [N, hidden_dim]
+        这两个文件会被 Stage 1.3 (insight_extractor) 和 Stage 3 (evaluator) 使用。
+        """
         os.makedirs(output_dir, exist_ok=True)
 
         probs = self.get_predictions()
