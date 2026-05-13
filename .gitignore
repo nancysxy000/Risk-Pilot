@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# 数据集 (太大不提交)
+dataset/
+
+# 环境变量 (含 API Key，绝对不能提交!)
+.env
+
+# 运行输出 (可重新生成)
+outputs/*.pt
+outputs/kb/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

@@ -1,0 +1,84 @@
+{
+  "total_rules": 5,
+  "qualified_rules": 0,
+  "individual_results": [
+    {
+      "rule_id": "R-20260513-OPT-001",
+      "name": "超高连接度欺诈环检测（Cluster-0）优化版",
+      "tp": 35,
+      "fp": 4168,
+      "tn": 33385,
+      "fn": 1769,
+      "recall": 0.019401330376940133,
+      "precision": 0.008327385201046872,
+      "fpr": 0.11098980108113866,
+      "f1": 0.011653071416680538,
+      "flagged": 4203,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260513-OPT-002",
+      "name": "极端高连接度小团伙检测（Cluster-1）优化版",
+      "tp": 0,
+      "fp": 147,
+      "tn": 37406,
+      "fn": 1804,
+      "recall": 0.0,
+      "precision": 0.0,
+      "fpr": 0.0039144675525257635,
+      "f1": 0,
+      "flagged": 147,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260513-OPT-003",
+      "name": "中等规模高连通欺诈环检测（Cluster-2 & Cluster-3）优化版",
+      "tp": 44,
+      "fp": 5500,
+      "tn": 32053,
+      "fn": 1760,
+      "recall": 0.024390243902439025,
+      "precision": 0.007936507936507936,
+      "fpr": 0.1464596703325966,
+      "f1": 0.011976047904191616,
+      "flagged": 5544,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260513-OPT-004",
+      "name": "特征维度0+高连接双重欺诈检测（Cluster-4）优化版",
+      "tp": 0,
+      "fp": 32,
+      "tn": 37521,
+      "fn": 1804,
+      "recall": 0.0,
+      "precision": 0.0,
+      "fpr": 0.0008521289910260165,
+      "f1": 0,
+      "flagged": 32,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260513-OPT-005",
+      "name": "低连接度但特征维度1极端异常检测（新增）",
+      "tp": 1,
+      "fp": 458,
+      "tn": 37095,
+      "fn": 1803,
+      "recall": 0.0005543237250554324,
+      "precision": 0.002178649237472767,
+      "fpr": 0.012196096184059863,
+      "f1": 0.0008837825894829871,
+      "flagged": 459,
+      "qualified": false
+    }
+  ],
+  "combined_result": {
+    "combined_recall": 0.024390243902439025,
+    "combined_precision": 0.007469020539806484,
+    "combined_fpr": 0.15569994407903495,
+    "total_flagged": 5891,
+    "coverage": 0.024390243902439025
+  },
+  "qualified_rule_ids": []
+}

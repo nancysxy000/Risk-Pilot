@@ -1,0 +1,69 @@
+# RiskPilot 全局配置
+
+# ===== 数据集配置 =====
+dataset:
+  name: "tfinance"          # tfinance / tsocial / yelp / amazon
+  path: "dataset/"
+  homo: true                 # true: 同构图, false: 异构图
+  train_ratio: 0.4
+  anomaly_alpha: null        # 异常比例调整 (null = 使用原始比例)
+  anomaly_std: null          # 异常特征标准差缩放
+
+# ===== Stage 1: GNN 感知层 =====
+gnn:
+  model: "BWGNN"             # BWGNN / BWGNN_Hetero
+  hidden_dim: 64
+  order: 2                   # Beta 小波阶数 (d)
+  epochs: 100
+  learning_rate: 0.01
+  device: "cpu"              # cpu / cuda
+
+  # 风险洞察提取配置
+  insight:
+    top_k_anomaly: 500       # 取 Top-K 高风险节点
+    anomaly_threshold: 0.5   # 异常概率阈值
+    n_clusters: 5            # 异常模式聚类数
+    k_hop: 2                 # 子图提取跳数
+
+# ===== Stage 2: LLM 策略层 =====
+llm:
+  provider: "openai"         # openai / local
+  model: "qwen-plus"         # 阿里云 DashScope qwen-plus
+  temperature: 0.3
+  max_tokens: 2000
+  api_key_env: "OPENAI_API_KEY"   # 从环境变量读取
+  base_url_env: "OPENAI_BASE_URL" # 从环境变量读取
+
+  # RAG 配置
+  rag:
+    embedding_model: "text-embedding-3-small"
+    top_k_retrieve: 5        # 检索 Top-K 相似规则
+    similarity_threshold: 0.7
+
+  # 规则生成配置
+  rule_gen:
+    max_rules_per_round: 10
+    max_optimization_rounds: 3
+
+# ===== Stage 3: 沙盒验证层 =====
+sandbox:
+  # 规则质量阈值
+  thresholds:
+    min_f1: 0.60
+    min_recall: 0.50
+    max_fpr: 0.05            # 最大误杀率
+    min_precision: 0.40
+  # 回测配置
+  backtest_ratio: 1.0        # 使用全量数据回测
+
+# ===== Stage 4: 规则知识库 =====
+knowledge_base:
+  vector_store: "chroma"     # chroma / faiss
+  persist_dir: "outputs/kb"
+  collection_name: "risk_rules"
+
+# ===== Pipeline =====
+pipeline:
+  max_iterations: 5          # 最大闭环迭代轮数
+  output_dir: "outputs/"
+  log_level: "INFO"

@@ -1,0 +1,35 @@
+# RiskPilot 依赖 — 已在 macOS ARM64 + Python 3.11 上验证通过
+#
+# 安装方式 (腾讯内网需指定官方源):
+#   conda activate riskpilot
+#   pip install -r requirements.txt --index-url https://pypi.org/simple/
+
+# ===== Core (版本严格锁定，DGL 对 PyTorch 版本敏感) =====
+torch==2.2.1
+dgl==2.1.0
+torchdata==0.7.1
+numpy==1.26.4
+scipy==1.17.1
+sympy==1.14.0
+scikit-learn==1.8.0
+
+# ===== GNN & Graph =====
+networkx==3.6.1
+
+# ===== Data & Config =====
+pyyaml==6.0.3
+pandas==3.0.3
+pydantic==2.13.4
+tqdm==4.67.3
+
+# ===== LLM & RAG (按需安装，Stage 2 使用) =====
+# openai>=1.0
+# langchain>=0.1.0
+# langchain-openai>=0.0.5
+
+# ===== Vector Store (按需安装，Stage 4 使用) =====
+# chromadb>=0.4.0
+
+# ===== Visualization (图表生成) =====
+matplotlib==3.10.9
+seaborn==0.13.2
