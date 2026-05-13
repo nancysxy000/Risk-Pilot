@@ -4,13 +4,17 @@ Stage 1: GNN 模型训练 — 异常检测与嵌入提取
 
 import os
 import time
+import warnings
 import torch
 import torch.nn.functional as F
 import numpy as np
+from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     f1_score, recall_score, precision_score, roc_auc_score
 )
+
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
 
 from .bwgnn_model import BWGNN, BWGNN_Hetero
 from .dataset_loader import GraphDataset
@@ -108,7 +112,10 @@ class GNNTrainer:
         best_metrics = {}
 
         t_start = time.time()
-        for epoch in range(gnn_cfg['epochs']):
+        pbar = tqdm(range(gnn_cfg['epochs']), desc="Training", unit="epoch",
+                    bar_format='{l_bar}{bar:30}{r_bar}')
+
+        for epoch in pbar:
             # ---- Train ----
             self.model.train()
             logits = self.model(features)
@@ -143,8 +150,12 @@ class GNNTrainer:
                 # 保存最佳模型参数
                 best_state = {k: v.clone() for k, v in self.model.state_dict().items()}
 
-            if epoch % 20 == 0:
-                print(f"  Epoch {epoch:3d} | Loss {loss:.4f} | Val-F1 {f1:.4f} (best {best_f1:.4f})")
+            # 更新进度条信息
+            pbar.set_postfix({
+                'loss': f'{loss:.4f}',
+                'val_F1': f'{f1:.4f}',
+                'best_F1': f'{best_f1:.4f}',
+            })
 
         elapsed = time.time() - t_start
         print(f"\nTraining done in {elapsed:.1f}s")

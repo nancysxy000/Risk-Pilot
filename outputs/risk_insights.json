@@ -1,0 +1,212 @@
+{
+  "summary": {
+    "total_nodes": 39357,
+    "total_anomaly_detected": 500,
+    "anomaly_ratio": 0.012704220341997611,
+    "num_risk_patterns": 5,
+    "avg_anomaly_score": 0.9999983906745911,
+    "description": "Detected 500 anomalous nodes (1.27%) across 5 distinct risk patterns in a graph with 39,357 nodes and 42,445,086 edges."
+  },
+  "risk_patterns": [
+    {
+      "cluster_id": 0,
+      "num_nodes": 37,
+      "avg_anomaly_score": 0.9999983310699463,
+      "max_anomaly_score": 0.9999998807907104,
+      "degree_stats": {
+        "mean": 1131.4324324324325,
+        "max": 1820,
+        "min": 516,
+        "std": 301.3476523830673
+      },
+      "salient_feature_dims": [],
+      "feature_z_scores": {},
+      "subgraph_stats": {
+        "internal_edges": 1160,
+        "local_density": 0.8708708708708709,
+        "total_neighbors": 7340
+      },
+      "risk_description": "Risk Pattern #0: 37 anomalous nodes detected. High connectivity (avg degree=1131), suggesting organized group behavior. Densely connected subgraph — potential fraud ring. Avg anomaly score: 1.000.",
+      "sample_nodes": [
+        4768,
+        23132,
+        5312,
+        4865,
+        27353,
+        4977,
+        5133,
+        27600,
+        3627,
+        29588,
+        3615,
+        6626,
+        17554,
+        25281,
+        20485,
+        5228,
+        15692,
+        7174,
+        26267,
+        32513
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "num_nodes": 305,
+      "avg_anomaly_score": 0.9999982714653015,
+      "max_anomaly_score": 1.0,
+      "degree_stats": {
+        "mean": 593.6459016393443,
+        "max": 1399,
+        "min": 99,
+        "std": 351.18609217288554
+      },
+      "salient_feature_dims": [],
+      "feature_z_scores": {},
+      "subgraph_stats": {
+        "internal_edges": 18048,
+        "local_density": 0.4534673366834171,
+        "total_neighbors": 7115
+      },
+      "risk_description": "Risk Pattern #1: 305 anomalous nodes detected. High connectivity (avg degree=594), suggesting organized group behavior. Densely connected subgraph — potential fraud ring. Avg anomaly score: 1.000.",
+      "sample_nodes": [
+        29531,
+        3772,
+        33728,
+        18144,
+        15530,
+        16907,
+        32357,
+        36106,
+        31143,
+        34747,
+        28924,
+        14212,
+        29026,
+        15518,
+        14994,
+        25132,
+        7400,
+        15739,
+        7810,
+        30013
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "num_nodes": 10,
+      "avg_anomaly_score": 0.9999993443489075,
+      "max_anomaly_score": 1.0,
+      "degree_stats": {
+        "mean": 1133.1,
+        "max": 1544,
+        "min": 715,
+        "std": 255.05781697489692
+      },
+      "salient_feature_dims": [
+        0
+      ],
+      "feature_z_scores": {
+        "0": 1.6843549013137817
+      },
+      "subgraph_stats": {
+        "internal_edges": 76,
+        "local_density": 0.8444444444444444,
+        "total_neighbors": 3129
+      },
+      "risk_description": "Risk Pattern #2: 10 anomalous nodes detected. High connectivity (avg degree=1133), suggesting organized group behavior. Densely connected subgraph — potential fraud ring. Abnormally high on feature dims [0]. Avg anomaly score: 1.000.",
+      "sample_nodes": [
+        26490,
+        10248,
+        6011,
+        694,
+        6901,
+        9810,
+        6460,
+        4958,
+        6461,
+        14181
+      ]
+    },
+    {
+      "cluster_id": 3,
+      "num_nodes": 16,
+      "avg_anomaly_score": 0.9999985694885254,
+      "max_anomaly_score": 1.0,
+      "degree_stats": {
+        "mean": 1129.5625,
+        "max": 1526,
+        "min": 757,
+        "std": 246.12572212946375
+      },
+      "salient_feature_dims": [],
+      "feature_z_scores": {},
+      "subgraph_stats": {
+        "internal_edges": 178,
+        "local_density": 0.7416666666666667,
+        "total_neighbors": 5698
+      },
+      "risk_description": "Risk Pattern #3: 16 anomalous nodes detected. High connectivity (avg degree=1130), suggesting organized group behavior. Densely connected subgraph — potential fraud ring. Avg anomaly score: 1.000.",
+      "sample_nodes": [
+        12515,
+        18129,
+        16771,
+        12203,
+        4735,
+        5335,
+        5068,
+        1479,
+        6695,
+        2906,
+        12387,
+        13392,
+        7137,
+        10996,
+        4492,
+        13276
+      ]
+    },
+    {
+      "cluster_id": 4,
+      "num_nodes": 132,
+      "avg_anomaly_score": 0.9999983906745911,
+      "max_anomaly_score": 1.0,
+      "degree_stats": {
+        "mean": 878.6363636363636,
+        "max": 1373,
+        "min": 99,
+        "std": 276.64396418521443
+      },
+      "salient_feature_dims": [],
+      "feature_z_scores": {},
+      "subgraph_stats": {
+        "internal_edges": 11576,
+        "local_density": 0.669442516770761,
+        "total_neighbors": 8634
+      },
+      "risk_description": "Risk Pattern #4: 132 anomalous nodes detected. High connectivity (avg degree=879), suggesting organized group behavior. Densely connected subgraph — potential fraud ring. Avg anomaly score: 1.000.",
+      "sample_nodes": [
+        31356,
+        35903,
+        5286,
+        22160,
+        33050,
+        20957,
+        13273,
+        3847,
+        34486,
+        17297,
+        30805,
+        28644,
+        27252,
+        9588,
+        17050,
+        20521,
+        19537,
+        17023,
+        15401,
+        27955
+      ]
+    }
+  ]
+}

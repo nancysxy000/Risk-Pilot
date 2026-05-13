@@ -1,0 +1,42 @@
+{
+  "total_rules": 2,
+  "qualified_rules": 0,
+  "individual_results": [
+    {
+      "rule_id": "R-20260512-OPT-001",
+      "name": "高度数异常交易检测",
+      "tp": 1635,
+      "fp": 31493,
+      "tn": 6060,
+      "fn": 169,
+      "recall": 0.906319290465632,
+      "precision": 0.049354020767930454,
+      "fpr": 0.8386280723244481,
+      "f1": 0.09361044314668499,
+      "flagged": 33128,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260512-OPT-002",
+      "name": "孤立高风险账户检测",
+      "tp": 9,
+      "fp": 483,
+      "tn": 37070,
+      "fn": 1795,
+      "recall": 0.004988913525498891,
+      "precision": 0.018292682926829267,
+      "fpr": 0.012861821958298937,
+      "f1": 0.007839721254355399,
+      "flagged": 492,
+      "qualified": false
+    }
+  ],
+  "combined_result": {
+    "combined_recall": 0.9113082039911308,
+    "combined_precision": 0.04889946460440214,
+    "combined_fpr": 0.851489894282747,
+    "total_flagged": 33620,
+    "coverage": 0.9113082039911308
+  },
+  "qualified_rule_ids": []
+}

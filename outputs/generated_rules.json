@@ -1,0 +1,50 @@
+[
+  {
+    "name": "高度数异常交易检测",
+    "description": "检测交易网络中度数异常偏高的节点，可能是集团欺诈的核心账户",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "node_degree",
+        "operator": ">",
+        "value": 50
+      },
+      {
+        "field": "feature_dim_0",
+        "operator": ">",
+        "value": 2.0
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "基于 GNN Cluster-0 模式: 高连接度 + 异常特征组合",
+    "rule_id": "R-20260512-001",
+    "generated_at": "2026-05-12T16:59:02.319904",
+    "source": "llm_auto_gen"
+  },
+  {
+    "name": "孤立高风险账户检测",
+    "description": "检测低度数但特征异常的节点，可能是新型单点欺诈",
+    "risk_type": "盗刷",
+    "severity": "medium",
+    "conditions": [
+      {
+        "field": "node_degree",
+        "operator": "<",
+        "value": 5
+      },
+      {
+        "field": "feature_dim_1",
+        "operator": ">",
+        "value": 3.0
+      }
+    ],
+    "logic": "AND",
+    "action": "alert",
+    "explanation": "基于 GNN Cluster-1 模式: 低连接度 + 单特征维度极端值",
+    "rule_id": "R-20260512-002",
+    "generated_at": "2026-05-12T16:59:02.320044",
+    "source": "llm_auto_gen"
+  }
+]
