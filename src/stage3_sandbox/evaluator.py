@@ -43,13 +43,16 @@ class RuleEvaluator:
         self.parser = RuleParser()
         self.thresholds = self.config['thresholds']  # 合格标准阈值
 
-    def evaluate(self, rules, graph):
+    def evaluate(self, rules, graph, gnn_outputs=None):
         """
         在标注数据集上评估所有规则
 
         Args:
             rules: list[dict], LLM 生成的规则 (来自 generated_rules.json)
             graph: DGL 图 (含 label 和 feature，即 tfinance 原始数据)
+            gnn_outputs: dict, GNN 输出 (可选)
+                - 'probs': tensor [N, 2], 异常概率
+                - 'embeddings': tensor [N, hidden_dim], 节点嵌入
         Returns:
             dict: 评估报告 → 写入 evaluation_report.json
         """
@@ -67,6 +70,38 @@ class RuleEvaluator:
             'feature_zscores': feature_zscores,
             'degree_zscore': degree_zscore,
         }
+
+        # 注入 GNN 输出到 ctx
+        if gnn_outputs is not None:
+            probs = gnn_outputs.get('probs')
+            embeddings = gnn_outputs.get('embeddings')
+
+            if probs is not None:
+                ctx['gnn_anomaly_scores'] = probs[:, 1]  # [N] 异常概率
+                print(f"  [Evaluator] 注入 gnn_anomaly_scores: min={probs[:, 1].min():.4f}, "
+                      f"max={probs[:, 1].max():.4f}, mean={probs[:, 1].mean():.4f}")
+            else:
+                ctx['gnn_anomaly_scores'] = torch.zeros(features.shape[0])
+
+            if embeddings is not None:
+                # 对全量节点嵌入做 KMeans 聚类
+                from sklearn.cluster import KMeans
+                n_clusters = 5  # 与 insight_extractor 一致
+                emb_np = embeddings.detach().cpu().numpy()
+                kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
+                cluster_ids = kmeans.fit_predict(emb_np)  # [N] 0..K-1
+
+                # GNN 判为正常的节点设为 -1
+                anomaly_scores = ctx['gnn_anomaly_scores'].numpy()
+                cluster_ids[anomaly_scores < 0.5] = -1
+                ctx['embedding_cluster_ids'] = torch.tensor(cluster_ids, dtype=torch.long)
+                print(f"  [Evaluator] 注入 embedding_cluster_ids: {n_clusters} 聚类, "
+                      f"{(cluster_ids >= 0).sum()} 个异常节点")
+            else:
+                ctx['embedding_cluster_ids'] = torch.full((features.shape[0],), -1, dtype=torch.long)
+        else:
+            ctx['gnn_anomaly_scores'] = torch.zeros(features.shape[0])
+            ctx['embedding_cluster_ids'] = torch.full((features.shape[0],), -1, dtype=torch.long)
 
         # 将 JSON 规则解析为可执行函数
         parsed_rules = self.parser.parse_all(rules)

@@ -7,6 +7,8 @@ Stage 3: 沙盒验证层 — 规则解析器
   - node_degree_zscore: 节点度数的 z-score
   - feature_dim_X: 第 X 维原始特征值
   - feature_dim_X_zscore: 第 X 维特征的 z-score
+  - gnn_anomaly_score: GNN 输出的异常概率 [0, 1]
+  - embedding_cluster_id: 嵌入聚类 ID (-1 = 非异常节点)
 """
 
 import operator
@@ -83,6 +85,10 @@ class RuleParser:
         elif field.startswith('feature_dim_'):
             dim = int(field.replace('feature_dim_', ''))
             return lambda ctx, op=op_fn, d=dim, v=float(value): op(ctx['features'][:, d], v)
+        elif field == 'gnn_anomaly_score':
+            return lambda ctx, op=op_fn, v=float(value): op(ctx['gnn_anomaly_scores'], v)
+        elif field == 'embedding_cluster_id':
+            return lambda ctx, op=op_fn, v=int(value): op(ctx['embedding_cluster_ids'], v)
         else:
             print(f"[WARNING] Unknown field: {field}")
             return None

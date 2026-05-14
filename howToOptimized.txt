@@ -118,3 +118,78 @@
   | P2     | 方向 3: 组合规则模板 | 最复杂，依赖方向 1 的基础设施      |
 
   建议执行路径: 先做方向 4+5（1-2 天解决当前最紧急的问题），再做方向 2（快速提升指标），然后做方向 1+3（系统性地提升规则表达能力），最后做方向 6（架构升级）。
+
+
+ 优化计划：方向 4 (Prompt 优化) + 方向 5 (闭环迭代优化)
+
+ 问题总结
+
+ 1. Prompt 问题: LLM 直接生成规则，缺乏对数据分布的深度分析，导致阈值设定不合理（如 Recall 27%/FPR
+ 21%）
+ 2. 闭环迭代问题: LLM 收到完整评估报告后"过度修正"，优化后反而更差（Recall 27% → 2%）
+
+ 方向 4: Prompt 优化
+
+ 修改文件: src/stage2_llm/prompt_templates.py
+
+ 4a. SYSTEM_PROMPT 增强
+
+ - 增加 Chain-of-Thought 指令：要求 LLM 先分析每个异常模式的特征分布差异，再设计阈值
+ - 增加"思考过程"要求：输出规则前先输出分析步骤
+
+ 4b. RULE_GENERATION_PROMPT 重构
+
+ - 在约束条件前增加"分析步骤"引导：
+   a. 先分析正常节点 vs 异常节点在各维度的分布差异
+   b. 找到能区分正常和异常的分界点
+   c. 据此设定阈值
+ - 改进示例规则：用 z-score 而非绝对值，更贴合实际分布
+
+ 4c. RULE_OPTIMIZATION_PROMPT 重构
+
+ - 改为"定向反馈"：明确告诉 LLM 每条规则的具体问题和调整方向
+ - 增加"增量调整"约束：阈值调整幅度不超过 20%，避免过度修正
+
+ 方向 5: 闭环迭代优化
+
+ 修改文件: src/stage2_llm/rule_generator.py, src/pipeline.py
+
+ 5a. 定向反馈 (rule_generator.py - optimize())
+
+ - 不再传整个 report，而是为每条规则生成针对性反馈：
+   - Recall 低 → "请降低阈值 X% 以提高召回"
+   - FPR 高 → "请提高阈值 X% 以降低误杀"
+   - Precision 低 → "请增加 AND 条件以提高精度"
+
+ 5b. 阈值微调策略 (rule_generator.py - 新方法 _threshold_search)
+
+ - 对 LLM 生成的规则做贪心搜索：自动微调每个条件阈值
+ - 遍历每个条件的 value，在 ±30% 范围内搜索最优值
+ - 选择 F1 最高的阈值组合
+ - 这层搜索在 LLM 生成规则后、沙盒评估前执行
+
+ 5c. 迭代稳定性 (pipeline.py)
+
+ - 增加"历史最优"追踪：记录每轮最好的规则集
+ - 如果优化后整体变差，回退到上一轮的规则
+ - 增加 early stop：连续 2 轮无改善则停止
+
+ 修改文件清单
+
+ | 文件                               | 修改内容
+       |
+ |------------------------------------|----------------------------------------------------------------
+ ------|
+ | src/stage2_llm/prompt_templates.py | 重写
+ SYSTEM_PROMPT、RULE_GENERATION_PROMPT、RULE_OPTIMIZATION_PROMPT |
+ | src/stage2_llm/rule_generator.py   | 新增 optimize() 定向反馈逻辑、新增 _threshold_search() 方法
+       |
+ | src/pipeline.py                    | 增加迭代稳定性逻辑（历史最优追踪、early stop）
+       |
+
+ 执行顺序
+
+ 1. 先改 prompt_templates.py（方向 4）
+ 2. 再改 rule_generator.py（方向 5a + 5b）
+ 3. 最后改 pipeline.py（方向 5c）
+ 4. 在 tfinance 上跑一次验证效果

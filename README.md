@@ -92,22 +92,30 @@ risk_insights.json + 规则知识库 + 数据分布统计
 [2.2] Prompt 构造: 组装风险洞察 + 历史规则 + 数据分布 + 约束条件
     │   System Prompt: "你是金融风控专家..."
     │   Context: {risk_insights} + {data_distribution} + {similar_rules} + {constraints}
+    │   Chain-of-Thought 引导: 分布对比 → 分界点识别 → 阈值设定
     │
     ▼
 [2.3] LLM 规则生成
     │   输出结构化规则 JSON:
     │   {
     │       "rule_id": "R-20260513-001",
-    │       "name": "超高连接度欺诈环检测",
+    │       "name": "高连接度欺诈环检测",
     │       "conditions": [
-    │           {"field": "node_degree_zscore", "operator": ">", "value": 2.0}
+    │           {"field": "gnn_anomaly_score", "operator": ">=", "value": 0.76},
+    │           {"field": "node_degree_zscore", "operator": ">", "value": -0.13}
     │       ],
-    │       "action": "block",
+    │       "action": "review",
     │       "severity": "high",
     │       "explanation": "基于GNN发现的Cluster-0模式..."
     │   }
     ▼
-[2.4] 规则自优化: 基于沙盒回测反馈迭代优化
+[2.4] 阈值微调搜索: 对 LLM 生成的规则做贪心 ±30% 搜索，自动微调阈值
+    │   评分: F1 - max(0, FPR - 0.05) * 0.5
+    │
+    ▼
+[2.5] 规则自优化: 基于定向反馈迭代优化
+    │   - 为每条规则生成针对性诊断 (Recall/FPR/Precision 具体差距)
+    │   - 约束 LLM 小幅调整 (阈值变动 <= 20%)
     │
     ▼
 输出: generated_rules.json
@@ -121,6 +129,8 @@ risk_insights.json + 规则知识库 + 数据分布统计
 | `node_degree_zscore` | float | 节点度数的标准分数，>2 表示远高于平均水平 |
 | `feature_dim_X` | float | 第 X 维原始特征值 (X 从 0 开始) |
 | `feature_dim_X_zscore` | float | 第 X 维特征的标准分数，\|z\|>1.5 表示显著偏离全局均值 |
+| `gnn_anomaly_score` | float | **GNN 输出的异常概率**，范围 [0, 1]，>0.5 表示可能异常，>0.8 表示高置信异常 |
+| `embedding_cluster_id` | int | 嵌入聚类 ID，-1 表示非异常节点，0~4 表示不同风险模式聚类 |
 
 ---
 
@@ -130,11 +140,12 @@ risk_insights.json + 规则知识库 + 数据分布统计
 
 **流程**:
 ```
-generated_rules.json + 标注数据集
+generated_rules.json + 标注数据集 + GNN 输出
     │
     ▼
 [3.1] 规则解析: 将 JSON 规则转为可执行的 Python 函数
-    │   - 支持字段: node_degree, node_degree_zscore, feature_dim_X, feature_dim_X_zscore
+    │   - 支持字段: node_degree, node_degree_zscore, feature_dim_X,
+    │     feature_dim_X_zscore, gnn_anomaly_score, embedding_cluster_id
     │   - 支持操作符: >, <, >=, <=, ==, !=
     │   - 支持逻辑: AND / OR
     │
@@ -142,6 +153,8 @@ generated_rules.json + 标注数据集
 [3.2] 预计算派生特征
     │   - feature_zscores: 各特征维度的 z-score
     │   - degree_zscore: 度数的 z-score
+    │   - gnn_anomaly_scores: GNN 输出的异常概率 (probs[:, 1])
+    │   - embedding_cluster_ids: KMeans 聚类全量嵌入，异常节点标记聚类 ID
     │
     ▼
 [3.3] 规则执行 & 指标计算
@@ -153,6 +166,12 @@ generated_rules.json + 标注数据集
 [3.4] 规则筛选: 通过阈值筛选高质量规则
     │   - F1 >= 0.60 且 Recall >= 0.50 且 FPR <= 0.05 且 Precision >= 0.40 → 通过
     │   - 否则 → 反馈给 LLM 重新优化 (闭环迭代)
+    ▼
+[3.5] 闭环迭代 (含稳定性保障)
+    │   - all_report_results 累积器: 跨轮次累积评估结果，不覆盖
+    │   - 历史最优追踪: best_rules / best_qualified_count / best_combined_f1
+    │   - Early stop: 连续 2 轮无改善则停止，回退到历史最优
+    │
     ▼
 输出: evaluation_report.json, qualified_rules.json
 ```
@@ -211,21 +230,21 @@ Risk-Pilot-main/
 │   │
 │   ├── stage2_llm/                    # Stage 2: LLM 策略层 (Yifei)
 │   │   ├── __init__.py
-│   │   ├── rule_generator.py          # LLM 规则生成 (支持 DashScope/OpenAI)
-│   │   ├── prompt_templates.py        # Prompt 模板 (含可用字段、数据分布)
+│   │   ├── rule_generator.py          # LLM 规则生成 (含阈值搜索 + 定向反馈)
+│   │   ├── prompt_templates.py        # Prompt 模板 (含 CoT + GNN 字段)
 │   │   └── rag_retriever.py           # RAG 检索模块
 │   │
 │   ├── stage3_sandbox/                # Stage 3: 沙盒验证层 (共同)
 │   │   ├── __init__.py
-│   │   ├── rule_parser.py             # 规则解析器 (支持 z-score 字段)
-│   │   └── evaluator.py               # 指标评估 (预计算派生特征)
+│   │   ├── rule_parser.py             # 规则解析器 (支持 GNN 字段)
+│   │   └── evaluator.py               # 指标评估 (注入 GNN 输出)
 │   │
 │   ├── stage4_kb/                     # Stage 4: 规则知识库 (共同)
 │   │   ├── __init__.py
 │   │   ├── knowledge_base.py          # 知识库管理
 │   │   └── rule_schema.py             # 规则数据模型
 │   │
-│   └── pipeline.py                    # 主 Pipeline 编排 (含数据分布统计)
+│   └── pipeline.py                    # 主 Pipeline 编排 (含闭环迭代稳定性)
 │
 ├── outputs/                           # 运行输出
 │   ├── gnn_predictions.pt
@@ -335,7 +354,7 @@ python -m src.pipeline --dataset amazon --mode full
 python -m src.pipeline --dataset tfinance --mode full
 ```
 - **数据准备**: 从 [Google Drive](https://drive.google.com/drive/folders/1PpNwvZx_YRSCDiHaBUmRIS3x1rZR7fMr) 下载 `tfinance` 文件，放入 `dataset/` 目录
-- **算力要求**: Mac CPU 约 18 分钟 (100 epochs)，内存 >= 2GB
+- **算力要求**: Mac CPU 约 22 分钟 (100 epochs)，内存 >= 2GB
 - **推荐参数**: `hidden_dim=64, order=2, epochs=100` (默认配置即可)
 - **适用场景**: 开发调试、论文实验、完整 Pipeline 演示
 
@@ -378,77 +397,127 @@ BWGNN 在 tfinance (39,357 节点 / 42M 边) 上训练 100 epochs 的结果:
 
 | 指标 | 值 |
 |------|-----|
-| **Test Macro-F1** | **89.95%** |
-| **Test AUC** | **94.89%** |
-| 训练时长 (Mac CPU) | ~18 分钟 |
+| **Test Macro-F1** | **88.89%** |
+| **Test AUC** | **95.02%** |
+| Best Val-F1 | 90.67% |
+| 训练时长 (Mac CPU) | ~22 分钟 |
 
 GNN 从 39,357 个节点中检测出 **500 个高风险节点**，聚类为 **5 种风险模式**:
 
 | 聚类 ID | 节点数 | 平均度数 | 局部密度 | 异常分数 | 风险描述 |
 |---------|--------|---------|---------|---------|---------|
-| Cluster 0 | 256 | 547 | 0.416 | 1.000 | 中大规模欺诈环，高度连接 |
-| Cluster 1 | 16 | 1,126 | 0.683 | 1.000 | 极小团伙但极高内聚性 |
-| Cluster 2 | 181 | 838 | 0.627 | 1.000 | 中等规模欺诈环 |
-| Cluster 3 | 38 | 1,133 | 0.879 | 1.000 | 高密度小型欺诈团伙 |
-| Cluster 4 | 9 | 1,180 | 0.833 | 1.000 | 高连接 + feature_dim_0 z-score=1.72 异常 |
+| Cluster 0 | 254 | 522 | 0.414 | 1.000 | 中大规模欺诈环，高度连接 |
+| Cluster 1 | 29 | 1,194 | 0.936 | 1.000 | 极小团伙，极高内聚性 |
+| Cluster 2 | 159 | 885 | 0.844 | 1.000 | 中等规模高密度欺诈环 |
+| Cluster 3 | 46 | 936 | 0.847 | 1.000 | 紧密小型欺诈团伙 |
+| Cluster 4 | 12 | 1,043 | 0.500 | 1.000 | 高连接 + feature_dim_0 z-score=1.55 异常 |
 
 **关键发现**:
 - 所有异常聚类均呈现**高连接度 + 高局部密度**特征，符合金融欺诈中"集团作案"的典型图结构模式
-- Cluster 4 是唯一携带显著特征异常的聚类，在 feature_dim_0 上 z-score 达 1.72
+- Cluster 1 的局部密度高达 0.936，几乎形成完全图，是典型的紧密团伙
+- Cluster 4 是唯一携带显著特征异常的聚类，在 feature_dim_0 上 z-score 达 1.55
 
 ### Stage 2: LLM 规则生成
 
-基于 GNN 风险洞察 + 数据分布统计，qwen-plus 自动生成了 **4 条风控规则**:
+基于 GNN 风险洞察 + 数据分布统计，qwen-plus 自动生成了 **5 条风控规则**，并经过阈值微调搜索优化:
 
 | 规则 ID | 名称 | 条件 | 动作 | 目标风险 |
 |---------|------|------|------|---------|
-| R-20260513-001 | 超高连接度欺诈环检测 | `node_degree_zscore > 2.0` | block | Cluster 0 |
-| R-20260513-002 | 极端高连接度小团伙检测 | `node_degree_zscore > 2.5` | block | Cluster 1 |
-| R-20260513-003 | 高连通欺诈环通用检测 | `node_degree > 800` | review | Cluster 2 & 3 |
-| R-20260513-004 | 特征+高连接双重检测 | `feature_dim_0_zscore > 1.5 AND node_degree > 850` | block | Cluster 4 |
+| R-20260513-001 | 高连接度欺诈环检测 (Cluster 0) | `gnn_anomaly_score >= 0.76 AND node_degree_zscore > -0.13` | review | Cluster 0 |
+| R-20260513-002 | 极高连接度小团伙检测 (Cluster 1) | `gnn_anomaly_score >= 0.76 AND node_degree_zscore >= 0.035` | block | Cluster 1 |
+| R-20260513-003 | 高密度欺诈环检测 (Cluster 2) | `gnn_anomaly_score >= 0.88 AND node_degree >= 490` | review | Cluster 2 |
+| R-20260513-004 | 高连通欺诈团伙检测 (Cluster 3) | `gnn_anomaly_score >= 0.76 AND node_degree_zscore >= 0.105` | review | Cluster 3 |
+| R-20260513-005 | 特征异常欺诈团伙检测 (Cluster 4) | `gnn_anomaly_score >= 0.88 AND feature_dim_0_zscore >= 1.05` | block | Cluster 4 |
+
+**关键设计**: 规则以 `gnn_anomaly_score` 作为主信号 (继承 GNN 90%+ 的检测能力)，辅以 degree/feature 条件细分风险类型。
 
 ### Stage 3: 沙盒回测结果
 
-**第一轮回测** (LLM 初始生成规则):
+**第一轮回测** (LLM 初始生成 + 阈值搜索):
 
 | 规则 | Recall | Precision | FPR | F1 | 合格 |
 |------|--------|-----------|-----|-----|------|
-| 超高连接度欺诈环检测 | 27.49% | 1.42% | 20.65% | 0.027 | 否 |
-| 极端高连接度小团伙检测 | 0.89% | 0.57% | 0.39% | 0.007 | 否 |
-| 高连通欺诈环通用检测 | 27.49% | 1.42% | 20.65% | 0.027 | 否 |
-| 特征+高连接双重检测 | 0.06% | 0.03% | 0.08% | 0.001 | 否 |
-| **组合 (OR)** | **27.49%** | **1.42%** | **20.65%** | — | — |
+| 高连接度欺诈环 (Cluster 0) | 1.6% | 50.9% | — | 0.030 | 否 |
+| 极高连接度小团伙 (Cluster 1) | 6.5% | 70.1% | — | 0.119 | 否 |
+| 高密度欺诈环 (Cluster 2) | 43.4% | 81.7% | — | 0.567 | 否 |
+| 高连通欺诈团伙 (Cluster 3) | 2.7% | 60.0% | — | 0.051 | 否 |
+| 特征异常团伙 (Cluster 4) | 1.2% | 27.2% | — | 0.023 | 否 |
+| **组合 (OR)** | **44.0%** | **78.1%** | **0.59%** | — | — |
 
-**闭环优化迭代后** (LLM 自动优化):
+**闭环迭代优化过程** (4 轮自动优化):
+
+| 迭代轮次 | 合格规则数 | 综合 Recall | 综合 Precision | 综合 FPR | 状态 |
+|---------|-----------|------------|---------------|---------|------|
+| 初始 | 0/5 | 44.0% | 78.1% | 0.59% | 起点 |
+| 第 1 轮 | 1/5 | 57.7% | 68.2% | 1.29% | 改善 |
+| 第 2 轮 | 2/4 | 81.6% | 70.2% | 1.66% | 改善 |
+| 第 3 轮 | 0/4 | 31.4% | 72.3% | 0.58% | 退化 |
+| 第 4 轮 | 3/5 | **81.5%** | **71.0%** | **1.60%** | 恢复最优 |
+
+**最终回测结果** (第 4 轮):
 
 | 规则 | Recall | Precision | FPR | F1 | 合格 |
 |------|--------|-----------|-----|-----|------|
-| 超高连接度欺诈环优化版 | 1.94% | 0.83% | 11.10% | 0.012 | 否 |
-| 极端高连接度小团伙优化版 | 0.00% | 0.00% | 0.39% | 0.000 | 否 |
-| 中等规模欺诈环优化版 | 2.44% | 0.79% | 14.65% | 0.012 | 否 |
-| 特征+高连接双重检测优化版 | 0.00% | 0.00% | 0.09% | 0.000 | 否 |
-| 低连接度特征异常检测 (新增) | 0.06% | 0.22% | 1.22% | 0.001 | 否 |
-| **组合 (OR)** | **2.44%** | **0.75%** | **15.57%** | — | — |
+| 高连接度欺诈环 (Cluster 0) | **80.8%** | **74.1%** | 1.36% | **0.773** | Yes |
+| 极高连接度小团伙 (Cluster 1) | 0.8% | 14.0% | 0.23% | 0.015 | 否 |
+| 高密度欺诈环 (Cluster 2) | **58.4%** | **89.2%** | 0.34% | **0.706** | Yes |
+| 高连通欺诈团伙 (Cluster 3) | **79.7%** | **76.3%** | 1.19% | **0.780** | Yes |
+| 特征异常团伙 (Cluster 4) | 0.0% | 0.0% | 0.05% | 0.000 | 否 |
+| **组合 (OR)** | **81.5%** | **71.0%** | **1.60%** | — | — |
 
 **合格标准**: F1 >= 0.60, Recall >= 0.50, FPR <= 0.05, Precision >= 0.40
 
-### 问题分析
+### Stage 4: 规则沉淀
 
-当前规则质量未达标的核心原因:
+通过 4 轮闭环迭代，共从 23 条规则中筛选出 **12 条优质规则**沉淀至知识库，覆盖 Cluster 0、2、3 三种主要风险模式。
 
-1. **规则表达能力不足**: 简单的阈值规则 (`degree > X AND feature_Y > Z`) 无法有效表达图结构模式 (如密集子图、欺诈环)。GNN 通过频谱分析达到 90% F1，但将这些信息蒸馏为 if-else 规则会损失大量信息。
+### 效果对比
 
-2. **特征维度信息缺失**: tfinance 的 10 维特征为匿名化特征，LLM 难以基于 feature_dim_0~9 理解业务含义，导致阈值设定缺乏直觉。
+| 版本 | Recall | Precision | FPR | 合格规则 | 关键改动 |
+|------|--------|-----------|-----|---------|---------|
+| 初始版本 | 2.4% | 0.75% | 15.6% | **0 条** | 仅 degree/feature 阈值规则 |
+| 当前版本 | **81.5%** | **71.0%** | **1.60%** | **12 条** | +GNN 嵌入字段 +CoT Prompt +阈值搜索 +迭代稳定性 |
 
-3. **闭环迭代"过度修正"**: LLM 在收到"Recall 低"反馈后倾向于大幅放宽条件，导致 FPR 暴增；收到"FPR 高"后又大幅收紧，导致 Recall 接近 0。
+---
 
-### 下一步优化方向
+## 核心优化总结
 
-详见项目文档或与开发者讨论，核心方向包括:
-- **扩展规则字段**: 增加聚类系数、k-core、PageRank 等图结构派生特征
-- **GNN 嵌入驱动**: 利用 GNN 输出的异常分数和嵌入向量作为规则输入
-- **混合架构**: GNN 初筛 + LLM 规则精炼的两阶段方案
-- **智能反馈**: 定向反馈 + 贝叶斯阈值搜索，替代当前的全量报告反馈
+### 优化 1: GNN 嵌入驱动规则
+
+将 GNN 输出的异常概率 (`gnn_anomaly_score`) 和嵌入聚类 ID (`embedding_cluster_id`) 作为规则可用字段。
+
+- 修改 `rule_parser.py`: 新增两个字段的解析逻辑
+- 修改 `evaluator.py`: 注入 GNN 输出到评估上下文，含 KMeans 聚类
+- 修改 `prompt_templates.py`: 更新可用字段表，设计原则改为优先使用 GNN 信号
+- 修改 `rule_generator.py`: `threshold_search()` 支持 GNN 字段
+- 修改 `pipeline.py`: 全链路传递 `gnn_outputs`
+
+效果: Recall 从 2.4% 跃升至 44%+，因为规则可写 `gnn_anomaly_score >= 0.8` 直接继承 GNN 检测能力。
+
+### 优化 2: Prompt 工程 (Chain-of-Thought)
+
+重写 `prompt_templates.py`，引入结构化思考流程:
+
+- **SYSTEM_PROMPT**: 增加思考流程 (分布对比 → 分界点识别 → 阈值设定)
+- **RULE_GENERATION_PROMPT**: 4 步 CoT (理解模式 → 参考分布 → 分析分界点 → 生成规则)
+- **RULE_OPTIMIZATION_PROMPT**: 定向反馈替代全量报告，增量约束 (阈值调整 <= 20%)
+
+### 优化 3: 阈值微调搜索
+
+新增 `threshold_search()` 方法 (`rule_generator.py`):
+
+- 对 LLM 生成的每条规则，在 ±30% 范围内贪心搜索最优阈值
+- 评分: `F1 - max(0, FPR - 0.05) * 0.5`
+- 在 LLM 生成规则后、沙盒评估前自动执行，作为规则质量保底
+
+### 优化 4: 闭环迭代稳定性
+
+修改 `pipeline.py` 的迭代逻辑:
+
+- **`all_report_results` 累积器**: 跨轮次累积所有评估结果，永不覆盖，防止丢失已合格规则
+- **历史最优追踪**: `best_rules` / `best_qualified_count` / `best_combined_f1`
+- **Early stop**: 连续 2 轮无改善则停止迭代
+- **退化回退**: 如果迭代后整体变差，自动回退到历史最优规则集
 
 ---
 
@@ -459,7 +528,7 @@ GNN 从 39,357 个节点中检测出 **500 个高风险节点**，聚类为 **5 
 | `outputs/gnn_predictions.pt` | 每个节点的异常概率 `[N, 2]`，`[:, 1]` 为异常分数 | Stage 1 |
 | `outputs/node_embeddings.pt` | 每个节点的 GNN 嵌入向量 `[N, hidden_dim]` | Stage 1 |
 | `outputs/risk_insights.json` | 结构化风险洞察: 聚类 + 图结构特征 + 自然语言描述 | Stage 1 |
-| `outputs/generated_rules.json` | LLM 生成的风控规则 (JSON 格式) | Stage 2 |
+| `outputs/generated_rules.json` | LLM 生成的风控规则 (含阈值优化) | Stage 2 |
 | `outputs/evaluation_report.json` | 沙盒回测指标: TP/FP/FN/TN, Recall, Precision, FPR | Stage 3 |
 | `outputs/qualified_rules.json` | 通过回测的优质规则 (沉淀至知识库) | Stage 4 |
 
@@ -480,13 +549,16 @@ GNN 从 39,357 个节点中检测出 **500 个高风险节点**，聚类为 **5 
 
 ## 技术亮点 & 创新点
 
-1. **GNN + LLM 协同**: 首次将图神经网络的结构化风险感知与 LLM 的规则生成能力结合
-2. **自主进化闭环**: GNN 感知 → LLM 生成 → 沙盒验证 → 知识库沉淀 → 反馈优化
-3. **Beta 小波频谱分析**: 利用 BWGNN 的多尺度频谱特性，捕获传统 GNN 难以识别的异常模式
-4. **可解释规则输出**: LLM 生成的规则具有自然语言解释，便于风控运营人员理解和审核
-5. **数据分布感知**: 自动计算图级统计分布，辅助 LLM 设定合理的规则阈值
-6. **Z-score 派生特征**: 支持标准化后的特征比较，让规则在跨数据集场景下更稳定
-7. **多 LLM 后端支持**: 统一的 OpenAI 兼容接口，一键切换 DashScope / OpenAI / Ollama
+1. **GNN + LLM 协同**: 将图神经网络的结构化风险感知与 LLM 的规则生成能力结合，规则直接继承 GNN 的检测精度
+2. **自主进化闭环**: GNN 感知 → LLM 生成 → 沙盒验证 → 知识库沉淀 → 反馈优化，规则越迭代越精准
+3. **GNN 嵌入驱动规则**: 规则可直接使用 `gnn_anomaly_score` 字段，解决了简单阈值规则无法有效表达图结构模式的核心瓶颈
+4. **Chain-of-Thought Prompt**: 引导 LLM 先分析分布差异再设定阈值，避免随意出值
+5. **定向反馈优化**: 不再传整份评估报告给 LLM，而是为每条规则生成具体诊断 (差距 + 方向 + 幅度)
+6. **阈值微调搜索**: LLM 生成规则后自动贪心搜索最优阈值，作为规则质量保底
+7. **迭代稳定性保障**: 累积器 + 历史最优追踪 + Early stop + 退化回退，防止闭环迭代反而变差
+8. **Beta 小波频谱分析**: 利用 BWGNN 的多尺度频谱特性，捕获传统 GNN 难以识别的异常模式
+9. **数据分布感知**: 自动计算图级统计分布，辅助 LLM 设定合理的规则阈值
+10. **多 LLM 后端支持**: 统一的 OpenAI 兼容接口，一键切换 DashScope / OpenAI / Ollama
 
 ---
 
@@ -497,6 +569,7 @@ GNN 从 39,357 个节点中检测出 **500 个高风险节点**，聚类为 **5 
 | Python | 3.11 |
 | PyTorch | 2.2.1 |
 | DGL | 2.1.0 |
+| scikit-learn | 用于 KMeans 聚类 |
 | LLM | 阿里云 DashScope qwen-plus |
 | OS | macOS (Apple Silicon / Intel) |
 

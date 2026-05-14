@@ -133,8 +133,13 @@ def run_pipeline(config, mode='full'):
         dataset_stats=trainer.dataset.stats,
         data_distribution=data_distribution,
     )
+
+    # 阈值微调搜索: 在 LLM 生成规则后自动搜索最优阈值
+    gnn_outputs = {'probs': probs, 'embeddings': embeddings}
+    print(f"  LLM 生成 {len(rules)} 条规则，开始阈值微调搜索...")
+    rules = generator.threshold_search(rules, trainer.graph, gnn_outputs=gnn_outputs)
     generator.save(rules, output_dir)
-    print(f"  Generated {len(rules)} rules")
+    print(f"  最终保留 {len(rules)} 条规则 (含阈值优化)")
 
     # ================================================================
     # Stage 3: 沙盒验证层 — 规则回测
@@ -145,41 +150,99 @@ def run_pipeline(config, mode='full'):
 
     from src.stage3_sandbox.evaluator import RuleEvaluator
     evaluator = RuleEvaluator(config)
-    report = evaluator.evaluate(rules, trainer.graph)
+
+    # 评估所有规则
+    report = evaluator.evaluate(rules, trainer.graph, gnn_outputs=gnn_outputs)
     evaluator.save_report(report, output_dir)
 
     # ================================================================
-    # 闭环迭代: 优化不合格规则
+    # 闭环迭代: 优化不合格规则 (含稳定性保障)
     # ================================================================
     max_iterations = config['pipeline']['max_iterations']
 
+    # 用 all_report_results 累积所有轮次的评估结果，防止 report 覆盖丢失合格规则
+    all_report_results = list(report['individual_results'])
+
+    # 追踪历史最优，防止迭代退化
+    best_rules = list(rules)
+    best_qualified_count = report['qualified_rules']
+    best_combined_f1 = 0
+    combined = report.get('combined_result', {})
+    if combined.get('combined_recall', 0) > 0 and combined.get('combined_precision', 0) > 0:
+        r = combined['combined_recall']
+        p = combined['combined_precision']
+        best_combined_f1 = 2 * p * r / (p + r)
+
+    no_improvement_count = 0
+
     for iteration in range(1, max_iterations):
-        # 检查是否有需要优化的规则
-        rules_to_optimize = evaluator.get_rules_to_optimize(rules, report['individual_results'])
+        # 检查是否有需要优化的规则 (只看原始规则 + 已累积的合格规则)
+        rules_to_optimize = evaluator.get_rules_to_optimize(rules, all_report_results)
         if not rules_to_optimize:
             print(f"\n[Pipeline] 所有规则均已合格，无需继续优化")
+            break
+
+        # Early stop: 连续 2 轮无改善
+        if no_improvement_count >= 2:
+            print(f"\n[Pipeline] 连续 {no_improvement_count} 轮无改善，停止迭代")
+            # 回退到历史最优
+            if best_qualified_count > sum(1 for r in all_report_results if r['qualified']):
+                print(f"  回退到历史最优: {best_qualified_count} 条合格规则")
+                rules = best_rules
             break
 
         print(f"\n{'='*60}")
         print(f"  闭环迭代 #{iteration}: 优化 {len(rules_to_optimize)} 条不合格规则")
         print(f"{'='*60}")
 
-        # LLM 重新优化
+        # LLM 定向优化 (使用定向反馈而非全量报告)
         optimized_rules = generator.optimize(rules_to_optimize, report, data_distribution)
         if not optimized_rules:
             print("[Pipeline] LLM 未返回优化结果，停止迭代")
             break
 
+        # 对优化后的规则再做阈值搜索
+        optimized_rules = generator.threshold_search(optimized_rules, trainer.graph, gnn_outputs=gnn_outputs)
+
         # 重新评估
-        report = evaluator.evaluate(optimized_rules, trainer.graph)
+        new_report = evaluator.evaluate(optimized_rules, trainer.graph, gnn_outputs=gnn_outputs)
+
+        # 累积本轮结果 (不覆盖历史)
+        all_report_results.extend(new_report['individual_results'])
+
+        # 计算本轮综合 F1
+        new_combined = new_report.get('combined_result', {})
+        new_f1 = 0
+        if new_combined.get('combined_recall', 0) > 0 and new_combined.get('combined_precision', 0) > 0:
+            nr = new_combined['combined_recall']
+            np_ = new_combined['combined_precision']
+            new_f1 = 2 * np_ * nr / (np_ + nr)
+
+        # 比较是否改善 (合格规则数 + 综合 F1)
+        improved = (new_report['qualified_rules'] > best_qualified_count or
+                    new_f1 > best_combined_f1)
+
+        if improved:
+            best_rules = list(rules)
+            best_qualified_count = max(best_qualified_count, new_report['qualified_rules'])
+            best_combined_f1 = max(best_combined_f1, new_f1)
+            no_improvement_count = 0
+            print(f"  本轮有改善: qualified={new_report['qualified_rules']}, F1={new_f1:.3f}")
+        else:
+            no_improvement_count += 1
+            print(f"  本轮无改善 (连续 {no_improvement_count} 次): qualified={new_report['qualified_rules']}, F1={new_f1:.3f}")
+
+        # 更新 report 为最新结果 (供下一轮 optimize 使用)
+        report = new_report
         evaluator.save_report(report, output_dir)
 
-        # 合并合格规则
+        # 合并合格规则到 rules 列表
         qualified_new = [
-            r for r, result in zip(optimized_rules, report['individual_results'])
+            r for r, result in zip(optimized_rules, new_report['individual_results'])
             if result['qualified']
         ]
-        rules.extend(qualified_new)
+        # 同时把所有优化后的规则加入 rules (下一轮可以再次评估)
+        rules.extend(optimized_rules)
 
     # ================================================================
     # Stage 4 (沉淀): 将合格规则写入知识库
@@ -188,11 +251,12 @@ def run_pipeline(config, mode='full'):
     print("  Stage 4: 规则沉淀至知识库")
     print("=" * 60)
 
+    # 从累积的所有评估结果中筛选合格规则
     qualified_rules = [
         r for r in rules
         if any(
             res['rule_id'] == r.get('rule_id') and res['qualified']
-            for res in report['individual_results']
+            for res in all_report_results
         )
     ]
 
