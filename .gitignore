@@ -10,6 +10,8 @@ dataset/
 # 运行输出 (可重新生成)
 outputs/*.pt
 outputs/kb/
+outputs_*/**/*.pt
+outputs_*/kb/
 
 # Python
 __pycache__/

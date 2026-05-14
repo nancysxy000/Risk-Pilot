@@ -1,0 +1,84 @@
+{
+  "total_rules": 5,
+  "qualified_rules": 0,
+  "individual_results": [
+    {
+      "rule_id": "R-20260514-OPT-001",
+      "name": "High-connectivity group with low feature 3 and 15",
+      "tp": 152,
+      "fp": 80,
+      "tn": 39197,
+      "fn": 6525,
+      "recall": 0.02276471469222705,
+      "precision": 0.6551724137931034,
+      "fpr": 0.002036815439061028,
+      "f1": 0.04400057895498625,
+      "flagged": 232,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-002",
+      "name": "Extreme low-feature group (dims 3/4/15) with ultra-high anomaly confidence",
+      "tp": 9,
+      "fp": 1,
+      "tn": 39276,
+      "fn": 6668,
+      "recall": 0.001347910738355549,
+      "precision": 0.9,
+      "fpr": 2.5460192988262852e-05,
+      "f1": 0.0026917900403768506,
+      "flagged": 10,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-003",
+      "name": "High-connectivity group with elevated features 21 and 22",
+      "tp": 749,
+      "fp": 634,
+      "tn": 38643,
+      "fn": 5928,
+      "recall": 0.11217612700314512,
+      "precision": 0.5415762834417932,
+      "fpr": 0.016141762354558647,
+      "f1": 0.18585607940446647,
+      "flagged": 1383,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-004",
+      "name": "Pure high-connectivity group (no salient features)",
+      "tp": 86,
+      "fp": 627,
+      "tn": 38650,
+      "fn": 6591,
+      "recall": 0.012880035944286355,
+      "precision": 0.12061711079943899,
+      "fpr": 0.015963541003640808,
+      "f1": 0.023274695534506087,
+      "flagged": 713,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-005",
+      "name": "High-connectivity group with only low feature 15",
+      "tp": 1335,
+      "fp": 1602,
+      "tn": 37675,
+      "fn": 5342,
+      "recall": 0.1999400928560731,
+      "precision": 0.45454545454545453,
+      "fpr": 0.04078722916719709,
+      "f1": 0.27771999167880174,
+      "flagged": 2937,
+      "qualified": false
+    }
+  ],
+  "combined_result": {
+    "combined_recall": 0.2462183615396136,
+    "combined_precision": 0.39452843772498203,
+    "combined_fpr": 0.06423606690938717,
+    "total_flagged": 4167,
+    "coverage": 0.2462183615396136
+  },
+  "qualified_rule_ids": []
+}

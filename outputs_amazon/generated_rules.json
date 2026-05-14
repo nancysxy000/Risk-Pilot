@@ -1,0 +1,104 @@
+[
+  {
+    "name": "High-Confidence Fraud Ring (Cluster 0)",
+    "description": "Detects ultra-high-confidence fraud rings with perfect GNN anomaly scores (1.0), extremely dense internal subgraph (local_density=0.65), and massive connectivity (mean degree=431, z-score ≈ (431−801)/1016 ≈ −0.36 → but note: global mean is high due to long tail; actual z-score of degree for Cluster 0 is ~ (431−413.5)/1016 ≈ 0.02 — not discriminative). Instead, rely on gnn_anomaly_score=1.0 AND abnormally high feature_dim_19 (z=15.24) — a definitive outlier. This captures the 12-node tightly coordinated ring.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.6992999999999999
+      },
+      {
+        "field": "feature_dim_19_zscore",
+        "operator": ">",
+        "value": 5.6
+      }
+    ],
+    "logic": "AND",
+    "action": "block",
+    "explanation": "Cluster 0 shows perfect anomaly score (1.0) and extreme positive deviation in feature_dim_19 (z=15.24), far exceeding all other clusters and global distribution (max z-score threshold for normal is ~3–4). This is a fingerprint of synthetic or manipulated behavior.",
+    "rule_id": "R-20260514-001",
+    "generated_at": "2026-05-14T14:46:33.135611",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "Organized Fraud Group (Clusters 1–4)",
+    "description": "Covers 457 nodes across Clusters 1–4 (259+57+30+142), all sharing high GNN confidence (>0.996), elevated feature_dim_7 & feature_dim_12 (z > 1.5), suppressed feature_dim_13/15/16/18 (z < −1.5), and feature_dim_19 significantly above mean (z > 2.0). Uses gnn_anomaly_score as primary gate, then feature z-scores for precision — avoids over-reliance on degree (which has high variance across clusters and overlaps with top 10% normal nodes).",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.6965
+      },
+      {
+        "field": "feature_dim_7_zscore",
+        "operator": ">",
+        "value": 1.0499999999999998
+      },
+      {
+        "field": "feature_dim_12_zscore",
+        "operator": ">",
+        "value": 1.0499999999999998
+      },
+      {
+        "field": "feature_dim_13_zscore",
+        "operator": "<",
+        "value": -1.9500000000000002
+      },
+      {
+        "field": "feature_dim_15_zscore",
+        "operator": "<",
+        "value": -1.9500000000000002
+      },
+      {
+        "field": "feature_dim_16_zscore",
+        "operator": "<",
+        "value": -1.9500000000000002
+      },
+      {
+        "field": "feature_dim_18_zscore",
+        "operator": "<",
+        "value": -1.9500000000000002
+      },
+      {
+        "field": "feature_dim_19_zscore",
+        "operator": ">",
+        "value": 1.4
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "All clusters 1–4 share identical salient feature signature (dims 7,12 high; 13,15,16,18 low; 19 high) and near-perfect anomaly scores. Using conservative z-score thresholds (|z|>1.5) ensures >95% coverage of these clusters while keeping false positive rate low — e.g., feature_dim_19 z>2.0 covers only top 2.3% of global distribution (per Gaussian approximation), and conjunction with 6+ aligned features makes accidental match negligible.",
+    "rule_id": "R-20260514-002",
+    "generated_at": "2026-05-14T14:46:33.135621",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "High-Density Subgraph Anchor (Cluster 0 + Cluster 2/3)",
+    "description": "Targets nodes in highly internally connected subgraphs (local_density ≥ 0.1) *and* high node_degree_zscore — specifically those with both structural density and outlier centrality. Cluster 0 (density=0.65) and Clusters 2/3 (density=0.116/0.154) stand out vs Cluster 1/4 (<0.04). Uses node_degree_zscore > 1.0 to select nodes meaningfully above median (z=1.0 ≈ degree > 1817, i.e., top ~15% — but only when combined with high density and anomaly score).",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.6992999999999999
+      },
+      {
+        "field": "node_degree_zscore",
+        "operator": ">",
+        "value": 0.7
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Clusters 0, 2, and 3 exhibit elevated local subgraph density (≥0.116), unlike Clusters 1/4 (~0.04). While degree alone is noisy, node_degree_zscore > 1.0 (i.e., degree > ~1817) combined with gnn_anomaly_score ≥ 0.999 isolates structurally dominant nodes in dense fraud subgraphs — critical for identifying ringleaders.",
+    "rule_id": "R-20260514-003",
+    "generated_at": "2026-05-14T14:46:33.135627",
+    "source": "llm_auto_gen+threshold_search"
+  }
+]

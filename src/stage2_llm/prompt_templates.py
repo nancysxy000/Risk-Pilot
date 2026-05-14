@@ -93,7 +93,7 @@ RULE_GENERATION_PROMPT = """## 当前任务
 - 如果某聚类的 degree mean 远高于全局 mean，用 node_degree_zscore 比 node_degree 更精确
 - 如果某聚类有 salient_feature_dims (如 dim=0, z-score=1.72)，则该维度的 z-score 是好条件
 - 如果某聚类没有显著特征维度，只用 node_degree 相关字段
-- tfinance 数据集中真实异常约 4.58%，你的规则不应标记超过 10% 的节点
+- 当前数据集异常比例为 {anomaly_ratio}，你的规则不应标记超过异常比例 2 倍的节点
 
 ## 第四步：生成规则
 
@@ -104,7 +104,7 @@ RULE_GENERATION_PROMPT = """## 当前任务
 
 约束:
 - 每个风险聚类至少 1 条规则，最多 2 条
-- 只用字段: node_degree, node_degree_zscore, feature_dim_X, feature_dim_X_zscore
+- 可用字段: node_degree, node_degree_zscore, feature_dim_X, feature_dim_X_zscore, gnn_anomaly_score, embedding_cluster_id
 - 单条件规则优先；多条件用 AND 时确保每个条件都有区分力
 - 不要生成过于宽松的规则 (如 degree > 10 这种会命中 90% 节点的条件)
 
@@ -133,6 +133,136 @@ RULE_OPTIMIZATION_PROMPT = """## 当前任务
 | `feature_dim_X_zscore` | 第 X 维特征的标准分数 |
 | `gnn_anomaly_score` | GNN 异常概率 [0, 1]，>0.5 为异常 |
 | `embedding_cluster_id` | 嵌入聚类 ID，-1 = 非异常 |
+
+## 数据分布统计
+{data_distribution}
+
+## 待优化规则及具体问题
+{targeted_feedback}
+
+## 历史有效规则参考
+{historical_rules}
+
+请输出优化后的规则 JSON 数组（直接输出 JSON，不要 ```json 标记）：
+"""
+
+# ============================================================
+# 消融实验: 禁用 GNN 字段的 Prompt 变体
+# ============================================================
+
+SYSTEM_PROMPT_NO_GNN = """你是一位资深的金融风控专家，专门负责移动支付场景下的反欺诈规则设计。
+
+你的任务是基于图神经网络 (GNN) 检测到的异常模式，自动生成可落地的风控检测规则。
+
+## 思考流程 (必须遵循)
+在生成规则之前，你必须先完成以下分析步骤:
+1. **分布对比**: 对比 GNN 发现的异常节点特征 (degree_stats, feature_z_scores) 与全局数据分布的差异
+2. **分界点识别**: 找到能够区分"正常节点"和"异常节点"的特征分界值
+3. **阈值设定**: 基于分界点设定条件阈值，确保:
+   - 阈值能够覆盖目标聚类的大部分节点
+   - 阈值不会过度泛化导致大量正常节点被误杀
+   - 参考 z-score 而非绝对值通常更稳定
+
+## 输出格式要求
+你必须以纯 JSON 数组格式输出规则（不要包含 markdown 代码块标记），每条规则包含以下字段：
+[
+    {{
+        "name": "规则名称 (简洁描述)",
+        "description": "详细的规则说明，解释检测逻辑和适用场景",
+        "risk_type": "风险类型 (如: 集团欺诈/洗钱/盗刷/薅羊毛)",
+        "severity": "high/medium/low",
+        "conditions": [
+            {{
+                "field": "特征字段名 (必须是下方可用字段之一)",
+                "operator": "> / < / >= / <= / == / !=",
+                "value": 数值阈值
+            }}
+        ],
+        "logic": "AND / OR (条件之间的逻辑关系)",
+        "action": "block / review / alert / limit",
+        "explanation": "规则生成的推理依据 (基于哪个 GNN 异常模式)"
+    }}
+]
+
+## 可用字段 (规则条件只能使用以下字段)
+| 字段名 | 类型 | 说明 |
+|--------|------|------|
+| `node_degree` | float | 节点度数，即该节点的连接数/交易对手数 |
+| `node_degree_zscore` | float | 节点度数的标准分数，>2 表示远高于平均水平 |
+| `feature_dim_X` | float | 第 X 维原始特征值 (X 从 0 开始) |
+| `feature_dim_X_zscore` | float | 第 X 维特征的标准分数，|z|>1.5 表示显著偏离全局均值 |
+
+注意：zscore 字段表示该值偏离全局均值多少个标准差，正值=偏高，负值=偏低。
+
+## 规则设计原则
+1. **精准性**: 规则条件应尽量精确，避免过度宽泛导致误杀
+2. **可解释性**: 每条规则必须有清晰的业务解释
+3. **可用字段限制**: 只能使用上方列出的字段，不要使用其他字段名
+4. **兼顾召回与精度**: 优先保证召回率 (>=50%)，同时控制误杀率 < 5%
+"""
+
+RULE_GENERATION_PROMPT_NO_GNN = """## 当前任务
+基于以下 GNN 检测到的风险模式，生成相应的风控检测规则。
+
+注意: 本实验只能使用节点度数和特征维度字段，不能使用 GNN 模型的异常分数或嵌入聚类字段。
+
+## 第一步：理解风险模式
+以下是 GNN 从 {total_nodes} 个节点中检测到的异常聚类 (异常比例: {anomaly_ratio}):
+
+{risk_insights}
+
+## 第二步：参考数据分布
+以下是被检测为异常的节点在全局分布中的位置:
+
+{data_distribution}
+
+## 第三步：分析分界点
+对于每个风险聚类，请思考:
+- 该聚类的 degree_stats (mean/min/max) 相比全局分布处于什么位置？
+- 该聚类是否有 salient_feature_dims？对应的 z-score 是多少？
+- 设定什么阈值能最大程度覆盖该聚类节点，同时最小化对正常节点的误杀？
+
+关键提示:
+- 如果某聚类的 degree mean 远高于全局 mean，用 node_degree_zscore 比 node_degree 更精确
+- 如果某聚类有 salient_feature_dims (如 dim=0, z-score=1.72)，则该维度的 z-score 是好条件
+- 如果某聚类没有显著特征维度，只用 node_degree 相关字段
+- 当前数据集异常比例为 {anomaly_ratio}，你的规则不应标记超过异常比例 2 倍的节点
+
+## 第四步：生成规则
+
+数据集: {dataset_name} | 特征维度: {feature_dims}
+
+历史参考规则 (来自知识库):
+{historical_rules}
+
+约束:
+- 每个风险聚类至少 1 条规则，最多 2 条
+- 可用字段: node_degree, node_degree_zscore, feature_dim_X, feature_dim_X_zscore (仅限这些字段)
+- 单条件规则优先；多条件用 AND 时确保每个条件都有区分力
+- 不要生成过于宽松的规则 (如 degree > 10 这种会命中 90% 节点的条件)
+
+请输出规则 JSON 数组（直接输出 JSON，不要 ```json 标记）：
+"""
+
+RULE_OPTIMIZATION_PROMPT_NO_GNN = """## 当前任务
+以下规则在沙盒回测中未达标，请根据每条规则的具体问题进行**小幅调整**。
+
+## 关键原则：小幅调整
+- 阈值调整幅度不要超过当前值的 20%
+- 不要彻底重写规则，只调整有问题的部分
+- 如果 Recall 低，适当放宽条件 (降低阈值 ~10-20%)
+- 如果 FPR 高，适当收紧条件 (提高阈值 ~10-20%)
+- 如果多个指标同时不达标，优先解决最严重的问题
+
+## 可用字段
+| 字段名 | 说明 |
+|--------|------|
+| `node_degree` | 节点度数 |
+| `node_degree_zscore` | 节点度数的标准分数 |
+| `feature_dim_X` | 第 X 维原始特征值 |
+| `feature_dim_X_zscore` | 第 X 维特征的标准分数 |
+
+注意: 本实验只能使用以上字段，不能使用 gnn_anomaly_score 或 embedding_cluster_id。
 
 ## 数据分布统计
 {data_distribution}

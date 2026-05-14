@@ -1,0 +1,296 @@
+{
+  "summary": {
+    "total_nodes": 11944,
+    "total_anomaly_detected": 500,
+    "anomaly_ratio": 0.04186202277294039,
+    "num_risk_patterns": 5,
+    "avg_anomaly_score": 0.995173454284668,
+    "description": "Detected 500 anomalous nodes (4.19%) across 5 distinct risk patterns in a graph with 11,944 nodes and 9,569,592 edges."
+  },
+  "risk_patterns": [
+    {
+      "cluster_id": 0,
+      "num_nodes": 244,
+      "avg_anomaly_score": 0.9916272759437561,
+      "max_anomaly_score": 0.9996527433395386,
+      "degree_stats": {
+        "mean": 183.21311475409837,
+        "max": 805,
+        "min": 6,
+        "std": 196.04529543141328
+      },
+      "salient_feature_dims": [
+        7,
+        12,
+        13,
+        15,
+        16,
+        18,
+        19
+      ],
+      "feature_z_scores": {
+        "7": 2.224107503890991,
+        "12": 2.1443004608154297,
+        "13": -1.9304618835449219,
+        "15": -2.1541659832000732,
+        "16": -2.311997890472412,
+        "18": -2.1562891006469727,
+        "19": 1.9950662851333618
+      },
+      "subgraph_stats": {
+        "internal_edges": 1640,
+        "local_density": 0.04120603015075377,
+        "total_neighbors": 8216
+      },
+      "risk_description": "Risk Pattern #0: 244 anomalous nodes detected. High connectivity (avg degree=183), suggesting organized group behavior. Abnormally high on feature dims [7, 12, 19]. Abnormally low on feature dims [13, 15, 16, 18]. Avg anomaly score: 0.992.",
+      "sample_nodes": [
+        9287,
+        10446,
+        7214,
+        9545,
+        11426,
+        8589,
+        1953,
+        7197,
+        11787,
+        5230,
+        5945,
+        7538,
+        9727,
+        11590,
+        10375,
+        9944,
+        10742,
+        6632,
+        7304,
+        8856
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "num_nodes": 12,
+      "avg_anomaly_score": 1.0,
+      "max_anomaly_score": 1.0,
+      "degree_stats": {
+        "mean": 431.3333333333333,
+        "max": 718,
+        "min": 66,
+        "std": 237.79414533490004
+      },
+      "salient_feature_dims": [
+        7,
+        12,
+        13,
+        15,
+        16,
+        17,
+        18,
+        19
+      ],
+      "feature_z_scores": {
+        "7": 2.692477226257324,
+        "12": 2.4081408977508545,
+        "13": -1.8500957489013672,
+        "15": -2.2622971534729004,
+        "16": -2.4214181900024414,
+        "17": -1.589555025100708,
+        "18": -2.267150402069092,
+        "19": 15.243406295776367
+      },
+      "subgraph_stats": {
+        "internal_edges": 86,
+        "local_density": 0.6515151515151515,
+        "total_neighbors": 1031
+      },
+      "risk_description": "Risk Pattern #1: 12 anomalous nodes detected. High connectivity (avg degree=431), suggesting organized group behavior. Densely connected subgraph — potential fraud ring. Abnormally high on feature dims [7, 12, 19]. Abnormally low on feature dims [13, 15, 16, 17, 18]. Avg anomaly score: 1.000.",
+      "sample_nodes": [
+        3531,
+        3600,
+        3612,
+        10118,
+        9753,
+        3698,
+        3421,
+        9089,
+        3420,
+        8984,
+        3393,
+        3707
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "num_nodes": 73,
+      "avg_anomaly_score": 0.9998575448989868,
+      "max_anomaly_score": 0.9999997615814209,
+      "degree_stats": {
+        "mean": 249.35616438356163,
+        "max": 770,
+        "min": 13,
+        "std": 221.1093060043525
+      },
+      "salient_feature_dims": [
+        7,
+        12,
+        13,
+        15,
+        16,
+        18,
+        19
+      ],
+      "feature_z_scores": {
+        "7": 1.851431965827942,
+        "12": 1.8142958879470825,
+        "13": -1.6699970960617065,
+        "15": -1.8310096263885498,
+        "16": -1.9849885702133179,
+        "18": -1.8249735832214355,
+        "19": 5.273951053619385
+      },
+      "subgraph_stats": {
+        "internal_edges": 435,
+        "local_density": 0.08276255707762557,
+        "total_neighbors": 5500
+      },
+      "risk_description": "Risk Pattern #2: 73 anomalous nodes detected. High connectivity (avg degree=249), suggesting organized group behavior. Abnormally high on feature dims [7, 12, 19]. Abnormally low on feature dims [13, 15, 16, 18]. Avg anomaly score: 1.000.",
+      "sample_nodes": [
+        6354,
+        11769,
+        10065,
+        10348,
+        11853,
+        11901,
+        11842,
+        11931,
+        8963,
+        8242,
+        10999,
+        11918,
+        5241,
+        8662,
+        11828,
+        9259,
+        10866,
+        4896,
+        4656,
+        11663
+      ]
+    },
+    {
+      "cluster_id": 3,
+      "num_nodes": 137,
+      "avg_anomaly_score": 0.9973729252815247,
+      "max_anomaly_score": 0.9999680519104004,
+      "degree_stats": {
+        "mean": 212.1021897810219,
+        "max": 1409,
+        "min": 10,
+        "std": 229.9164330785958
+      },
+      "salient_feature_dims": [
+        7,
+        12,
+        13,
+        15,
+        16,
+        18,
+        19
+      ],
+      "feature_z_scores": {
+        "7": 2.0224733352661133,
+        "12": 2.0310795307159424,
+        "13": -1.897264838218689,
+        "15": -2.0602824687957764,
+        "16": -2.2169950008392334,
+        "18": -2.060034990310669,
+        "19": 3.2057206630706787
+      },
+      "subgraph_stats": {
+        "internal_edges": 663,
+        "local_density": 0.035583941605839414,
+        "total_neighbors": 7863
+      },
+      "risk_description": "Risk Pattern #3: 137 anomalous nodes detected. High connectivity (avg degree=212), suggesting organized group behavior. Abnormally high on feature dims [7, 12, 19]. Abnormally low on feature dims [13, 15, 16, 18]. Avg anomaly score: 0.997.",
+      "sample_nodes": [
+        10578,
+        9402,
+        11170,
+        7524,
+        11439,
+        11573,
+        11761,
+        9157,
+        7939,
+        6069,
+        11525,
+        5056,
+        8570,
+        7984,
+        10550,
+        5360,
+        9774,
+        6628,
+        10029,
+        4966
+      ]
+    },
+    {
+      "cluster_id": 4,
+      "num_nodes": 34,
+      "avg_anomaly_score": 0.9999995231628418,
+      "max_anomaly_score": 1.0,
+      "degree_stats": {
+        "mean": 264.3235294117647,
+        "max": 721,
+        "min": 19,
+        "std": 243.76419664096252
+      },
+      "salient_feature_dims": [
+        7,
+        12,
+        13,
+        15,
+        16,
+        18,
+        19
+      ],
+      "feature_z_scores": {
+        "7": 1.798529863357544,
+        "12": 2.0263984203338623,
+        "13": -1.9942821264266968,
+        "15": -2.0502970218658447,
+        "16": -2.206890344619751,
+        "18": -2.049797534942627,
+        "19": 9.662611961364746
+      },
+      "subgraph_stats": {
+        "internal_edges": 162,
+        "local_density": 0.1443850267379679,
+        "total_neighbors": 3026
+      },
+      "risk_description": "Risk Pattern #4: 34 anomalous nodes detected. High connectivity (avg degree=264), suggesting organized group behavior. Moderately connected subgraph — possible coordinated activity. Abnormally high on feature dims [7, 12, 19]. Abnormally low on feature dims [13, 15, 16, 18]. Avg anomaly score: 1.000.",
+      "sample_nodes": [
+        5564,
+        11193,
+        8331,
+        9601,
+        5182,
+        4894,
+        11010,
+        4601,
+        4164,
+        9252,
+        9151,
+        7283,
+        8318,
+        6499,
+        913,
+        3553,
+        9063,
+        11799,
+        3569,
+        11008
+      ]
+    }
+  ]
+}

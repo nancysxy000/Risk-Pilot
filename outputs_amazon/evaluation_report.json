@@ -1,0 +1,86 @@
+{
+  "total_rules": 5,
+  "qualified_rules": 1,
+  "individual_results": [
+    {
+      "rule_id": "R-20260514-OPT-001",
+      "name": "High-Confidence Fraud Ring (Cluster 0)",
+      "tp": 649,
+      "fp": 45,
+      "tn": 11078,
+      "fn": 172,
+      "recall": 0.7904993909866017,
+      "precision": 0.9351585014409222,
+      "fpr": 0.004045671131888879,
+      "f1": 0.8567656765676568,
+      "flagged": 694,
+      "qualified": true
+    },
+    {
+      "rule_id": "R-20260514-OPT-002",
+      "name": "Organized Fraud Group (Clusters 1–4)",
+      "tp": 383,
+      "fp": 11,
+      "tn": 11112,
+      "fn": 438,
+      "recall": 0.46650426309378806,
+      "precision": 0.9720812182741116,
+      "fpr": 0.0009889418322395038,
+      "f1": 0.6304526748971193,
+      "flagged": 394,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-003",
+      "name": "High-Density Subgraph Anchor (Cluster 0 + Cluster 2/3)",
+      "tp": 1,
+      "fp": 4,
+      "tn": 11119,
+      "fn": 820,
+      "recall": 0.001218026796589525,
+      "precision": 0.2,
+      "fpr": 0.0003596152117234559,
+      "f1": 0.002421307506053269,
+      "flagged": 5,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-004",
+      "name": "Organized Fraud Group (Clusters 1–4) [Alt]",
+      "tp": 383,
+      "fp": 11,
+      "tn": 11112,
+      "fn": 438,
+      "recall": 0.46650426309378806,
+      "precision": 0.9720812182741116,
+      "fpr": 0.0009889418322395038,
+      "f1": 0.6304526748971193,
+      "flagged": 394,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-005",
+      "name": "High-Density Subgraph Anchor (Cluster 0 + Cluster 2/3) [Alt]",
+      "tp": 63,
+      "fp": 44,
+      "tn": 11079,
+      "fn": 758,
+      "recall": 0.07673568818514007,
+      "precision": 0.5887850467289719,
+      "fpr": 0.003955767328958015,
+      "f1": 0.1357758620689655,
+      "flagged": 107,
+      "qualified": false
+    }
+  ],
+  "combined_result": {
+    "combined_recall": 0.7978075517661388,
+    "combined_precision": 0.8875338753387534,
+    "combined_fpr": 0.00746201564326171,
+    "total_flagged": 738,
+    "coverage": 0.7978075517661388
+  },
+  "qualified_rule_ids": [
+    "R-20260514-OPT-001"
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "total_rules": 4,
+  "qualified_rules": 0,
+  "individual_results": [
+    {
+      "rule_id": "R-20260514-OPT-001",
+      "name": "High-degree + high-dim7-dim12-dim19 group",
+      "tp": 5,
+      "fp": 0,
+      "tn": 11123,
+      "fn": 816,
+      "recall": 0.0060901339829476245,
+      "precision": 1.0,
+      "fpr": 0.0,
+      "f1": 0.012106537530266344,
+      "flagged": 5,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-002",
+      "name": "Extreme dim19 outlier + high connectivity",
+      "tp": 8,
+      "fp": 1,
+      "tn": 11122,
+      "fn": 813,
+      "recall": 0.0097442143727162,
+      "precision": 0.8888888888888888,
+      "fpr": 8.990380293086398e-05,
+      "f1": 0.01927710843373494,
+      "flagged": 9,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-003",
+      "name": "Low-dim13-15-16-18 + high-dim7-12 group",
+      "tp": 401,
+      "fp": 539,
+      "tn": 10584,
+      "fn": 420,
+      "recall": 0.4884287454323995,
+      "precision": 0.42659574468085104,
+      "fpr": 0.048458149779735685,
+      "f1": 0.4554230550823396,
+      "flagged": 940,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-004",
+      "name": "Very high connectivity (z ≥ 0.7) + dim19 elevated",
+      "tp": 8,
+      "fp": 1,
+      "tn": 11122,
+      "fn": 813,
+      "recall": 0.0097442143727162,
+      "precision": 0.8888888888888888,
+      "fpr": 8.990380293086398e-05,
+      "f1": 0.01927710843373494,
+      "flagged": 9,
+      "qualified": false
+    }
+  ],
+  "combined_result": {
+    "combined_recall": 0.4920828258221681,
+    "combined_precision": 0.4279661016949153,
+    "combined_fpr": 0.04854805358266655,
+    "total_flagged": 944,
+    "coverage": 0.4920828258221681
+  },
+  "qualified_rule_ids": []
+}

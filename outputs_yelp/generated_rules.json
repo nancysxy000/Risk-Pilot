@@ -1,0 +1,142 @@
+[
+  {
+    "name": "High-connectivity group with low feature 3 and 15",
+    "description": "Detects organized fraud groups exhibiting abnormally high connectivity (degree) and significantly suppressed values in features 3 and 15 — indicative of synthetic or manipulated account behavior (e.g., fake reviews with uniform low trust signals). Uses z-scores for robustness across scale.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.6789999999999999
+      },
+      {
+        "field": "feature_dim_3_zscore",
+        "operator": "<=",
+        "value": -1.9500000000000002
+      },
+      {
+        "field": "feature_dim_15_zscore",
+        "operator": "<=",
+        "value": -1.9500000000000002
+      }
+    ],
+    "logic": "AND",
+    "action": "block",
+    "explanation": "Matches Risk Pattern #0 (162 nodes, avg anomaly score 0.983) and partially overlaps with #1 and #2 — all share strong suppression in dim 15 and/or dim 3. Z-score thresholds (-1.5) cover >90% of these clusters while staying below global P5 (~-1.645 for normal), minimizing false positives.",
+    "rule_id": "R-20260514-001",
+    "generated_at": "2026-05-14T14:23:55.064675",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "Extreme low-feature group (dims 3/4/15) with ultra-high anomaly confidence",
+    "description": "Targets the most suspicious subset: ultra-high GNN confidence (>0.995) combined with extreme suppression in features 3, 4, and 15 — consistent with tightly coordinated synthetic accounts (e.g., bot farms generating identical low-trust profiles). Very high precision, low recall by design.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.6965
+      },
+      {
+        "field": "feature_dim_3_zscore",
+        "operator": "<=",
+        "value": -2.6
+      },
+      {
+        "field": "feature_dim_4_zscore",
+        "operator": "<=",
+        "value": -1.9500000000000002
+      },
+      {
+        "field": "feature_dim_15_zscore",
+        "operator": "<=",
+        "value": -2.6
+      }
+    ],
+    "logic": "AND",
+    "action": "block",
+    "explanation": "Precisely targets Risk Pattern #4 (25 nodes, avg anomaly score 0.996), which shows the strongest deviations: dim3 z=-3.04, dim4 z=-1.73, dim15 z=-2.22. Thresholds balance coverage (all 25 nodes satisfy gnn_score ≥ 0.995 and dim3/dim15 ≤ -2.0) and specificity (global P0.5 for dim3 is ~-2.58; -2.0 is conservative and avoids >0.5% false positive rate).",
+    "rule_id": "R-20260514-002",
+    "generated_at": "2026-05-14T14:23:55.064693",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "High-connectivity group with elevated features 21 and 22",
+    "description": "Identifies fraud clusters showing both unusually high connectivity and abnormally elevated values in features 21 and 22 — suggesting coordinated manipulation to inflate legitimacy signals (e.g., artificial upvotes, fake check-ins, or boosted ratings). Feature 22 has extremely low global std (0.008), so even small absolute shifts yield large z-scores.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.6859999999999999
+      },
+      {
+        "field": "feature_dim_21_zscore",
+        "operator": ">=",
+        "value": 1.0499999999999998
+      },
+      {
+        "field": "feature_dim_22_zscore",
+        "operator": ">=",
+        "value": 1.4
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Captures Risk Patterns #2 (84 nodes) and #4 (25 nodes), both showing concurrent high z-scores in dim21 (>1.5) and dim22 (>2.4). Global dim22 std=0.008 → z=2.0 corresponds to +0.016 absolute deviation, well within detectable range and highly discriminative (normal P97.7 ≈ z=2.0). Ensures high precision while allowing human review for contextual validation.",
+    "rule_id": "R-20260514-003",
+    "generated_at": "2026-05-14T14:23:55.064700",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "Pure high-connectivity group (no salient features)",
+    "description": "Flags highly connected nodes with no distinctive feature anomalies but very high GNN anomaly scores — likely representing stealthy, heterogeneous fraud groups that avoid obvious feature manipulation but exhibit strong graph-level coordination (e.g., money mules with diverse profiles but shared transaction topology).",
+    "risk_type": "洗钱",
+    "severity": "medium",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.6825
+      },
+      {
+        "field": "embedding_cluster_id",
+        "operator": "==",
+        "value": 3.0
+      }
+    ],
+    "logic": "AND",
+    "action": "alert",
+    "explanation": "Isolates Risk Pattern #3 (71 nodes), the only cluster with no salient features (empty salient_feature_dims). Its high avg degree (160) and local density (0.021) suggest structural collusion without signature feature drift. Using embedding_cluster_id ensures clean separation from other patterns; gnn_anomaly_score ≥ 0.975 covers all 71 nodes (max=0.992) with minimal bleed (global P99 of anomaly score is ~0.99, so threshold is safe).",
+    "rule_id": "R-20260514-004",
+    "generated_at": "2026-05-14T14:23:55.064706",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "High-connectivity group with only low feature 15",
+    "description": "Detects fraud groups distinguished primarily by abnormally low feature 15 (z ≤ -1.5), paired with high GNN confidence — a lighter variant of Pattern #0/#1, possibly representing early-stage or less-sophisticated coordinated activity.",
+    "risk_type": "集团欺诈",
+    "severity": "medium",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.6789999999999999
+      },
+      {
+        "field": "feature_dim_15_zscore",
+        "operator": "<=",
+        "value": -1.9500000000000002
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Covers Risk Pattern #1 (158 nodes, avg z15 = -1.55) and extends to lower-confidence outliers in #0 and #2. Feature 15 has high global mean (0.90) and std (0.284); z ≤ -1.5 implies value ≤ 0.47, far below typical range. Threshold avoids over-triggering: global P6.7 ≈ z=-1.5, so <7% of normal nodes hit this — well under the 2× anomaly rate allowance (2.18%).",
+    "rule_id": "R-20260514-005",
+    "generated_at": "2026-05-14T14:23:55.064712",
+    "source": "llm_auto_gen+threshold_search"
+  }
+]

@@ -23,6 +23,7 @@ class RuleGenerator:
         self.config = config['llm']
         self.rag = rag_retriever
         self.llm_client = None
+        self.ablation = self.config.get('ablation', None)
         self._init_llm()
 
     def _init_llm(self):
@@ -63,7 +64,15 @@ class RuleGenerator:
         Returns:
             list[dict]: 结构化规则列表
         """
-        from .prompt_templates import SYSTEM_PROMPT, RULE_GENERATION_PROMPT
+        from .prompt_templates import SYSTEM_PROMPT, RULE_GENERATION_PROMPT, SYSTEM_PROMPT_NO_GNN, RULE_GENERATION_PROMPT_NO_GNN
+
+        # 消融实验: 选择对应的 prompt
+        if self.ablation == 'no_gnn':
+            system_prompt = SYSTEM_PROMPT_NO_GNN
+            rule_prompt = RULE_GENERATION_PROMPT_NO_GNN
+        else:
+            system_prompt = SYSTEM_PROMPT
+            rule_prompt = RULE_GENERATION_PROMPT
 
         # 1. RAG 检索历史相关规则
         historical_rules = "无历史规则 (首次运行)"
@@ -72,7 +81,7 @@ class RuleGenerator:
 
         # 2. 组装 Prompt
         summary = risk_insights.get('summary', {})
-        user_prompt = RULE_GENERATION_PROMPT.format(
+        user_prompt = rule_prompt.format(
             risk_insights=json.dumps(risk_insights['risk_patterns'], indent=2, ensure_ascii=False),
             dataset_name=dataset_stats.get('name', 'unknown') if dataset_stats else 'unknown',
             total_nodes=summary.get('total_nodes', 'N/A'),
@@ -83,7 +92,7 @@ class RuleGenerator:
         )
 
         # 3. 调用 LLM
-        raw_response = self._call_llm(SYSTEM_PROMPT, user_prompt)
+        raw_response = self._call_llm(system_prompt, user_prompt)
 
         # 4. 解析输出
         rules = self._parse_rules(raw_response)
@@ -104,7 +113,15 @@ class RuleGenerator:
         - 不再把整个评估报告丢给 LLM，而是为每条规则生成具体的问题诊断
         - 要求 LLM 小幅调整阈值 (不超过 20%)
         """
-        from .prompt_templates import SYSTEM_PROMPT, RULE_OPTIMIZATION_PROMPT
+        from .prompt_templates import SYSTEM_PROMPT, RULE_OPTIMIZATION_PROMPT, SYSTEM_PROMPT_NO_GNN, RULE_OPTIMIZATION_PROMPT_NO_GNN
+
+        # 消融实验: 选择对应的 prompt
+        if self.ablation == 'no_gnn':
+            system_prompt = SYSTEM_PROMPT_NO_GNN
+            opt_prompt = RULE_OPTIMIZATION_PROMPT_NO_GNN
+        else:
+            system_prompt = SYSTEM_PROMPT
+            opt_prompt = RULE_OPTIMIZATION_PROMPT
 
         historical_rules = "无历史规则"
         if self.rag:
@@ -115,13 +132,13 @@ class RuleGenerator:
         # 生成定向反馈
         targeted_feedback = self._build_targeted_feedback(rules, evaluation_results)
 
-        user_prompt = RULE_OPTIMIZATION_PROMPT.format(
+        user_prompt = opt_prompt.format(
             targeted_feedback=targeted_feedback,
             historical_rules=historical_rules,
             data_distribution=data_distribution,
         )
 
-        raw_response = self._call_llm(SYSTEM_PROMPT, user_prompt)
+        raw_response = self._call_llm(system_prompt, user_prompt)
         optimized_rules = self._parse_rules(raw_response)
 
         for i, rule in enumerate(optimized_rules):
@@ -351,13 +368,31 @@ class RuleGenerator:
                     {"role": "user", "content": user_prompt},
                 ],
             )
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+            finish_reason = response.choices[0].finish_reason
+
+            # 检测截断
+            if finish_reason == 'length':
+                print(f"[WARNING] LLM response truncated (finish_reason=length, "
+                      f"tokens={response.usage.completion_tokens}/{self.config['max_tokens']})")
+
+            # 保存原始响应用于调试
+            debug_path = os.path.join('outputs', '_llm_raw_response.txt')
+            with open(debug_path, 'w', encoding='utf-8') as f:
+                f.write(f"finish_reason: {finish_reason}\n")
+                f.write(f"tokens: {response.usage.completion_tokens}\n\n")
+                f.write(content)
+
+            return content
         except Exception as e:
             print(f"[ERROR] LLM call failed: {e}")
             return self._mock_response()
 
     def _parse_rules(self, raw_response):
         """从 LLM 原始输出中解析结构化规则"""
+        import re
+
+        # 1. 直接 JSON 解析
         try:
             rules = json.loads(raw_response)
             if isinstance(rules, list):
@@ -365,7 +400,7 @@ class RuleGenerator:
         except json.JSONDecodeError:
             pass
 
-        import re
+        # 2. 从 markdown 代码块中提取
         json_match = re.search(r'```(?:json)?\s*([\s\S]*?)```', raw_response)
         if json_match:
             try:
@@ -375,7 +410,34 @@ class RuleGenerator:
             except json.JSONDecodeError:
                 pass
 
+        # 3. 提取第一个 [ ... ] 块 (处理截断: 尝试补全尾部)
+        bracket_match = re.search(r'\[[\s\S]*', raw_response)
+        if bracket_match:
+            json_str = bracket_match.group(0)
+            # 尝试直接解析
+            try:
+                rules = json.loads(json_str)
+                if isinstance(rules, list):
+                    return rules
+            except json.JSONDecodeError:
+                pass
+
+            # 截断修复: 尝试补全 ]
+            try:
+                # 找到最后一个完整的 } 并截断
+                last_brace = json_str.rfind('}')
+                if last_brace > 0:
+                    fixed = json_str[:last_brace + 1] + ']'
+                    rules = json.loads(fixed)
+                    if isinstance(rules, list):
+                        print(f"[ParseFix] Recovered {len(rules)} rules from truncated response")
+                        return rules
+            except json.JSONDecodeError:
+                pass
+
         print("[WARNING] Failed to parse LLM output, returning empty rules")
+        print(f"  Raw response length: {len(raw_response)} chars")
+        print(f"  First 200 chars: {raw_response[:200]}")
         return []
 
     def _mock_response(self):

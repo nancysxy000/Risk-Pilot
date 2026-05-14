@@ -1,0 +1,132 @@
+[
+  {
+    "name": "High-degree group with low feature_15 and high feature_22",
+    "description": "Detects organized fraud groups exhibiting abnormally high connectivity (degree far above global mean) and extreme deviations in feature dimensions 15 (low) and 22 (high), consistent with Risk Pattern #0. Targets nodes likely involved in coordinated fake review or account takeover campaigns.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "node_degree_zscore",
+        "operator": ">",
+        "value": 1.0499999999999998
+      },
+      {
+        "field": "feature_dim_15_zscore",
+        "operator": "<",
+        "value": -1.9500000000000002
+      },
+      {
+        "field": "feature_dim_22_zscore",
+        "operator": ">",
+        "value": 0.84
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Based on Cluster 0: avg degree_zscore ≈ (135.6−176.2)/100.1 ≈ −0.405 → but z-score is misleading due to skew; actual degree mean=136 is *below* global mean=176, yet cluster shows high internal density and extreme feature z-scores. So we prioritize feature signals + moderate degree elevation: node_degree_zscore > 1.5 covers top 6.7% of degree distribution (P93.3), while feature thresholds align with observed z-scores (−1.91 and +1.55). This avoids over-flagging low-degree nodes and ensures feature-driven precision.",
+    "rule_id": "R-20260514-001",
+    "generated_at": "2026-05-14T14:37:12.119437",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "Moderate-degree group with high feature_0 and low feature_24",
+    "description": "Identifies mid-connectivity fraudulent clusters showing strong signal in feature dimension 0 (e.g., abnormal profile completeness or activity burst) and suppression in feature 24 (e.g., anomalous temporal consistency), matching Risk Patterns #1 and #4. Suggests coordinated but less aggressive synthetic account behavior.",
+    "risk_type": "薅羊毛",
+    "severity": "medium",
+    "conditions": [
+      {
+        "field": "feature_dim_0_zscore",
+        "operator": ">",
+        "value": 1.0499999999999998
+      },
+      {
+        "field": "feature_dim_24_zscore",
+        "operator": "<",
+        "value": -1.6920000000000002
+      }
+    ],
+    "logic": "AND",
+    "action": "alert",
+    "explanation": "Clusters 1 & 4 share identical salient dims (0,24) and highly consistent z-scores (+1.57/+1.69 and −2.73/−2.01). Using conservative thresholds (1.5 and −1.8) captures >85% of both clusters while staying within ~2× global anomaly rate (1.09% → target <2.2%). Node degree is not discriminative here (avg~40 vs global mean 176), so omitting it improves precision.",
+    "rule_id": "R-20260514-002",
+    "generated_at": "2026-05-14T14:37:12.119449",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "Ultra-high-connectivity group (no strong feature signal)",
+    "description": "Flags extremely well-connected nodes lacking clear feature outliers — indicative of large-scale botnets or compromised merchant accounts with uniform behavior across features (e.g., identical device fingerprints, synchronized transactions). Matches Risk Pattern #2.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "node_degree_zscore",
+        "operator": ">",
+        "value": 1.4
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Cluster 2 has high avg degree (130) but no salient features — its signal is purely topological. Global degree P95=335 → z-score = (335−176.2)/100.1 ≈ 1.59; P99=470.4 → z≈2.94. Setting node_degree_zscore > 2.0 targets ~2.3% of nodes (close to 2× anomaly rate 2.18%), covering all Cluster 2 nodes (min degree=4, but mean=130 → most are >250 → z>0.74; top 2.3% ensures full recall).",
+    "rule_id": "R-20260514-003",
+    "generated_at": "2026-05-14T14:37:12.119456",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "Extreme high-connectivity group with multi-feature anomalies",
+    "description": "Detects the most aggressive fraud cluster: highest average degree (195) combined with strong, consistent deviations across five feature dimensions — especially extreme highs in 21/22 and lows in 3/4/15. Suggests tightly controlled synthetic accounts with engineered behavioral signatures.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "node_degree_zscore",
+        "operator": ">",
+        "value": 1.26
+      },
+      {
+        "field": "feature_dim_22_zscore",
+        "operator": ">",
+        "value": 1.75
+      },
+      {
+        "field": "feature_dim_15_zscore",
+        "operator": "<",
+        "value": -2.6
+      }
+    ],
+    "logic": "AND",
+    "action": "block",
+    "explanation": "Cluster 3 shows strongest signals: degree mean=195 → z≈(195−176.2)/100.1≈0.19, but max=487 → z≈3.11; using z>1.8 targets top ~3.6% (safe margin under 2×1.09%). Feature 22 z=2.92 is most extreme — threshold 2.5 ensures >90% recall. Feature 15 z=−2.38 → threshold −2.0 balances coverage and precision. These three conditions jointly isolate Cluster 3 with minimal overlap with other clusters.",
+    "rule_id": "R-20260514-004",
+    "generated_at": "2026-05-14T14:37:12.119461",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "High-connectivity group with feature_21 and feature_22 elevation",
+    "description": "Secondary rule for Cluster 3 focusing on its most distinctive positive feature signals — unusually elevated values in dimensions 21 and 22 (both near upper bound of global distribution), reinforcing suspicion when combined with high connectivity.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "node_degree_zscore",
+        "operator": ">",
+        "value": 1.0499999999999998
+      },
+      {
+        "field": "feature_dim_21_zscore",
+        "operator": ">",
+        "value": 1.0499999999999998
+      },
+      {
+        "field": "feature_dim_22_zscore",
+        "operator": ">",
+        "value": 1.4
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Cluster 3’s feature_z_scores show +1.69 (dim21) and +2.92 (dim22); using z>1.5 & z>2.0 ensures robust coverage while avoiding false positives from dim21 alone (less discriminative). Paired with degree_zscore>1.5 (covers ~6.7% of nodes), this rule complements the stricter 'block' rule — acting as a higher-recall, lower-precision fallback.",
+    "rule_id": "R-20260514-005",
+    "generated_at": "2026-05-14T14:37:12.119466",
+    "source": "llm_auto_gen+threshold_search"
+  }
+]

@@ -1,0 +1,61 @@
+# RiskPilot 消融实验: Yelp 数据集 - 禁用 GNN 字段
+
+dataset:
+  name: "yelp"
+  path: "dataset/"
+  homo: true
+  train_ratio: 0.4
+  anomaly_alpha: null
+  anomaly_std: null
+
+gnn:
+  model: "BWGNN"
+  hidden_dim: 64
+  order: 2
+  epochs: 100
+  learning_rate: 0.01
+  device: "cpu"
+
+  insight:
+    top_k_anomaly: 500
+    anomaly_threshold: 0.5
+    n_clusters: 5
+    k_hop: 2
+
+llm:
+  provider: "openai"
+  model: "qwen-plus"
+  temperature: 0.3
+  max_tokens: 4096
+  api_key_env: "OPENAI_API_KEY"
+  base_url_env: "OPENAI_BASE_URL"
+
+  rag:
+    embedding_model: "text-embedding-3-small"
+    top_k_retrieve: 5
+    similarity_threshold: 0.7
+
+  rule_gen:
+    max_rules_per_round: 10
+    max_optimization_rounds: 3
+
+  ablation: "no_gnn"
+
+sandbox:
+  thresholds:
+    min_f1: 0.60
+    min_recall: 0.50
+    max_fpr: 0.05
+    min_precision: 0.40
+  backtest_ratio: 1.0
+
+knowledge_base:
+  vector_store: "chroma"
+  persist_dir: "outputs_yelp_ablation/kb"
+  collection_name: "risk_rules_yelp_ablation"
+
+pipeline:
+  max_iterations: 5
+  output_dir: "outputs_yelp_ablation/"
+  log_level: "INFO"
+  ablation: "no_gnn"

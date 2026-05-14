@@ -40,11 +40,11 @@ RiskPilot 是一个金融风控规则的自主进化引擎，通过 **GNN 感知
 
 **流程**:
 ```
-原始交易图 (tfinance/tsocial)
+原始交易图 (tfinance/yelp/amazon)
     │
     ▼
 [1.1] 数据预处理 & 图构建
-    │   - 加载 tfinance/tsocial 数据集
+    │   - 加载 tfinance/yelp/amazon 数据集
     │   - 特征标准化、类别不平衡处理
     │   - 图结构分析（度分布、连通性）
     ▼
@@ -61,10 +61,11 @@ RiskPilot 是一个金融风控规则的自主进化引擎，通过 **GNN 感知
 输出: risk_insights.json
     {
         "cluster_id": 0,
-        "risk_type": "集团欺诈",
-        "key_features": ["高度数", "密集子图", "短时间大量交易"],
-        "anomaly_nodes": [1234, 5678, ...],
-        "confidence": 0.92
+        "num_nodes": 298,
+        "degree_stats": {"mean": 201.3, "max": 2577, "min": 9},
+        "salient_feature_dims": [7, 12, 13, 15, 16, 17, 18, 19],
+        "feature_z_scores": {"7": 2.16, "12": 2.13, ...},
+        "risk_description": "Risk Pattern #0: 298 anomalous nodes..."
     }
 ```
 
@@ -98,12 +99,13 @@ risk_insights.json + 规则知识库 + 数据分布统计
 [2.3] LLM 规则生成
     │   输出结构化规则 JSON:
     │   {
-    │       "rule_id": "R-20260513-001",
+    │       "rule_id": "R-20260514-001",
     │       "name": "高连接度欺诈环检测",
     │       "conditions": [
-    │           {"field": "gnn_anomaly_score", "operator": ">=", "value": 0.76},
-    │           {"field": "node_degree_zscore", "operator": ">", "value": -0.13}
+    │           {"field": "gnn_anomaly_score", "operator": ">=", "value": 0.68},
+    │           {"field": "feature_dim_15_zscore", "operator": "<=", "value": -1.95}
     │       ],
+    │       "logic": "AND",
     │       "action": "review",
     │       "severity": "high",
     │       "explanation": "基于GNN发现的Cluster-0模式..."
@@ -212,7 +214,12 @@ Risk-Pilot-main/
 ├── requirements.txt                   # 依赖包
 ├── .env                               # API 密钥配置 (不纳入版本控制)
 ├── configs/
-│   └── default.yaml                   # 全局配置
+│   ├── default.yaml                   # 全局配置 (tfinance 基线)
+│   ├── baseline_yelp.yaml             # Yelp 基线配置
+│   ├── baseline_amazon.yaml           # Amazon 基线配置
+│   ├── ablation_yelp_no_gnn.yaml      # Yelp 消融配置 (无 GNN 字段)
+│   ├── ablation_amazon_no_gnn.yaml    # Amazon 消融配置 (无 GNN 字段)
+│   └── ablation_no_gnn.yaml           # tfinance 消融配置 (无 GNN 字段)
 ├── dataset/
 │   ├── tfinance                       # T-Finance 数据集 (DGL 二进制)
 │   └── tsocial                        # T-Social 数据集
@@ -230,8 +237,8 @@ Risk-Pilot-main/
 │   │
 │   ├── stage2_llm/                    # Stage 2: LLM 策略层 (Yifei)
 │   │   ├── __init__.py
-│   │   ├── rule_generator.py          # LLM 规则生成 (含阈值搜索 + 定向反馈)
-│   │   ├── prompt_templates.py        # Prompt 模板 (含 CoT + GNN 字段)
+│   │   ├── rule_generator.py          # LLM 规则生成 (含阈值搜索 + 定向反馈 + 消融支持)
+│   │   ├── prompt_templates.py        # Prompt 模板 (含 CoT + GNN 字段 + 消融变体)
 │   │   └── rag_retriever.py           # RAG 检索模块
 │   │
 │   ├── stage3_sandbox/                # Stage 3: 沙盒验证层 (共同)
@@ -244,26 +251,16 @@ Risk-Pilot-main/
 │   │   ├── knowledge_base.py          # 知识库管理
 │   │   └── rule_schema.py             # 规则数据模型
 │   │
-│   └── pipeline.py                    # 主 Pipeline 编排 (含闭环迭代稳定性)
+│   └── pipeline.py                    # 主 Pipeline 编排 (含闭环迭代 + 消融支持)
 │
-├── outputs/                           # 运行输出
-│   ├── gnn_predictions.pt
-│   ├── node_embeddings.pt
-│   ├── risk_insights.json
-│   ├── generated_rules.json
-│   ├── evaluation_report.json
-│   └── qualified_rules.json
+├── outputs/                           # 运行输出 (默认 tfinance)
+├── outputs_yelp/                      # Yelp 基线输出
+├── outputs_amazon/                    # Amazon 基线输出
+├── outputs_yelp_ablation/             # Yelp 消融实验输出
+├── outputs_amazon_ablation/           # Amazon 消融实验输出
 │
 ├── notebooks/                         # 实验 Notebook
-│   ├── 01_eda.ipynb
-│   ├── 02_gnn_training.ipynb
-│   ├── 03_llm_rule_gen.ipynb
-│   └── 04_full_pipeline.ipynb
-│
 └── tests/
-    ├── test_gnn.py
-    ├── test_sandbox.py
-    └── test_pipeline.py
 ```
 
 ---
@@ -306,13 +303,6 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 ```
 
-`.env` 配置示例 (OpenAI 官方):
-
-```bash
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-# OPENAI_BASE_URL 留空则使用 OpenAI 官方地址
-```
-
 支持的 LLM 服务商 (均通过 OpenAI 兼容接口接入):
 - **阿里云 DashScope**: `base_url=https://dashscope.aliyuncs.com/compatible-mode/v1`
 - **OpenAI 官方**: `base_url` 留空或设为 `https://api.openai.com/v1`
@@ -324,127 +314,97 @@ OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ### Step 4: 运行
 
 ```bash
-# 完整 Pipeline (GNN → LLM → 沙盒 → 知识库)
-python -m src.pipeline --dataset tfinance --mode full
+# 完整 Pipeline — 使用默认配置 (tfinance)
+python -m src.pipeline
+
+# 指定数据集
+python -m src.pipeline --dataset yelp --mode full
+python -m src.pipeline --dataset amazon --mode full
+
+# 使用自定义配置文件
+python -m src.pipeline --config configs/baseline_yelp.yaml
 
 # 仅运行 GNN 感知层 (不需要 API)
 python -m src.pipeline --dataset tfinance --mode gnn_only
 
-# 切换数据集
-python -m src.pipeline --dataset yelp --mode full
-python -m src.pipeline --dataset amazon --mode full
+# 消融实验 (禁用 GNN 字段)
+python -m src.pipeline --config configs/ablation_amazon_no_gnn.yaml
 ```
 
 ---
 
 ## 数据集
 
-| 数据集     | 节点数    | 边数       | 异常比例 | 特征维度 | 来源          |
-|-----------|----------|-----------|---------|---------|--------------|
-| T-Finance | 39,357   | 42,445,086 | 4.58%   | 10      | ICML 2022    |
-| T-Social  | 5,781,065 | 73,105,508 | 3.01%   | 2       | ICML 2022    |
-| Yelp      | 45,954   | 3,846,979  | 6.67%   | 32      | DGL Built-in |
-| Amazon    | 11,944   | 4,398,392  | 9.50%   | 25      | DGL Built-in |
+| 数据集     | 节点数    | 边数         | 异常比例 | 特征维度 | 来源          |
+|-----------|----------|-------------|---------|---------|--------------|
+| T-Finance | 39,357   | 42,445,086  | 4.58%   | 10      | ICML 2022    |
+| T-Social  | 5,781,065| 73,105,508  | 3.01%   | 2       | ICML 2022    |
+| Yelp      | 45,954   | 8,097,302   | 14.53%  | 32      | DGL Built-in |
+| Amazon    | 11,944   | 9,569,592   | 6.87%   | 25      | DGL Built-in |
 
 ### 各数据集运行方案
 
 #### T-Finance (推荐首选)
 ```bash
-# 需要手动下载数据集
 python -m src.pipeline --dataset tfinance --mode full
 ```
 - **数据准备**: 从 [Google Drive](https://drive.google.com/drive/folders/1PpNwvZx_YRSCDiHaBUmRIS3x1rZR7fMr) 下载 `tfinance` 文件，放入 `dataset/` 目录
 - **算力要求**: Mac CPU 约 22 分钟 (100 epochs)，内存 >= 2GB
-- **推荐参数**: `hidden_dim=64, order=2, epochs=100` (默认配置即可)
 - **适用场景**: 开发调试、论文实验、完整 Pipeline 演示
 
 #### Yelp (欺诈评论检测)
 ```bash
-# 自动从 DGL 下载，无需手动准备
 python -m src.pipeline --dataset yelp --mode full
 ```
 - **数据准备**: 首次运行自动下载 (~150MB)，后续使用缓存 (`~/.dgl/`)
-- **算力要求**: Mac CPU < 1 分钟，内存 < 1GB
-- **推荐参数**: `hidden_dim=64, order=2, epochs=100`
+- **算力要求**: Mac CPU 约 5 分钟，内存 >= 2GB
 
 #### Amazon (虚假评论检测)
 ```bash
-# 自动从 DGL 下载
 python -m src.pipeline --dataset amazon --mode full
 ```
 - **数据准备**: 首次运行自动下载 (~30MB)
-- **算力要求**: Mac CPU < 1 分钟，内存 < 1GB
+- **算力要求**: Mac CPU 约 5 分钟，内存 >= 1GB
 
 #### T-Social (大规模社交网络)
 ```bash
-# 需要手动下载数据集，谨慎使用
 python -m src.pipeline --dataset tsocial --mode full
 ```
 - **数据准备**: 从 [Google Drive](https://drive.google.com/drive/folders/1PpNwvZx_YRSCDiHaBUmRIS3x1rZR7fMr) 下载 `tsocial` 文件
 - **算力要求**: 内存 >= 16GB，CPU 训练约 30~60 分钟
-- **推荐参数**: `hidden_dim=10, order=5, epochs=100` (特征维度仅 2，需更高阶小波)
 - **注意**: 570 万节点，Mac 8GB 内存可能不够，建议在 16GB+ 机器上运行
 
 ---
 
-## 实际运行结果 (tfinance 数据集)
+## 实验结果
 
-以下为接入真实 LLM (阿里云 DashScope qwen-plus) 后在 T-Finance 数据集上的完整运行结果。
+### Stage 1: GNN 感知层 — 跨数据集对比
 
-### Stage 1: GNN 风险感知
+BWGNN 在三个数据集上训练 100 epochs 的结果:
 
-BWGNN 在 tfinance (39,357 节点 / 42M 边) 上训练 100 epochs 的结果:
+| 数据集 | 节点数 | 异常比例 | Macro-F1 | AUC | 训练时长 |
+|--------|--------|---------|----------|-----|---------|
+| **T-Finance** | 39,357 | 4.58% | **88.89%** | **95.02%** | ~22 min |
+| **Yelp** | 45,954 | 14.53% | 70.69% | 83.10% | ~4 min |
+| **Amazon** | 11,944 | 6.87% | **92.36%** | **96.49%** | ~5 min |
 
-| 指标 | 值 |
-|------|-----|
-| **Test Macro-F1** | **88.89%** |
-| **Test AUC** | **95.02%** |
-| Best Val-F1 | 90.67% |
-| 训练时长 (Mac CPU) | ~22 分钟 |
+**关键发现**: Amazon 的 GNN 检测效果最好 (F1=92.36%)，Yelp 最弱 (F1=70.69%)。GNN 质量直接决定了下游规则的上限。
+
+### Stage 2+3: 规则生成与回测 — 跨数据集结果
+
+#### T-Finance (GNN F1=88.89%)
 
 GNN 从 39,357 个节点中检测出 **500 个高风险节点**，聚类为 **5 种风险模式**:
 
-| 聚类 ID | 节点数 | 平均度数 | 局部密度 | 异常分数 | 风险描述 |
-|---------|--------|---------|---------|---------|---------|
-| Cluster 0 | 254 | 522 | 0.414 | 1.000 | 中大规模欺诈环，高度连接 |
-| Cluster 1 | 29 | 1,194 | 0.936 | 1.000 | 极小团伙，极高内聚性 |
-| Cluster 2 | 159 | 885 | 0.844 | 1.000 | 中等规模高密度欺诈环 |
-| Cluster 3 | 46 | 936 | 0.847 | 1.000 | 紧密小型欺诈团伙 |
-| Cluster 4 | 12 | 1,043 | 0.500 | 1.000 | 高连接 + feature_dim_0 z-score=1.55 异常 |
+| 聚类 ID | 节点数 | 平均度数 | 局部密度 | 风险描述 |
+|---------|--------|---------|---------|---------|
+| Cluster 0 | 254 | 522 | 0.414 | 中大规模欺诈环，高度连接 |
+| Cluster 1 | 29 | 1,194 | 0.936 | 极小团伙，极高内聚性 |
+| Cluster 2 | 159 | 885 | 0.844 | 中等规模高密度欺诈环 |
+| Cluster 3 | 46 | 936 | 0.847 | 紧密小型欺诈团伙 |
+| Cluster 4 | 12 | 1,043 | 0.500 | 高连接 + 特征异常 |
 
-**关键发现**:
-- 所有异常聚类均呈现**高连接度 + 高局部密度**特征，符合金融欺诈中"集团作案"的典型图结构模式
-- Cluster 1 的局部密度高达 0.936，几乎形成完全图，是典型的紧密团伙
-- Cluster 4 是唯一携带显著特征异常的聚类，在 feature_dim_0 上 z-score 达 1.55
-
-### Stage 2: LLM 规则生成
-
-基于 GNN 风险洞察 + 数据分布统计，qwen-plus 自动生成了 **5 条风控规则**，并经过阈值微调搜索优化:
-
-| 规则 ID | 名称 | 条件 | 动作 | 目标风险 |
-|---------|------|------|------|---------|
-| R-20260513-001 | 高连接度欺诈环检测 (Cluster 0) | `gnn_anomaly_score >= 0.76 AND node_degree_zscore > -0.13` | review | Cluster 0 |
-| R-20260513-002 | 极高连接度小团伙检测 (Cluster 1) | `gnn_anomaly_score >= 0.76 AND node_degree_zscore >= 0.035` | block | Cluster 1 |
-| R-20260513-003 | 高密度欺诈环检测 (Cluster 2) | `gnn_anomaly_score >= 0.88 AND node_degree >= 490` | review | Cluster 2 |
-| R-20260513-004 | 高连通欺诈团伙检测 (Cluster 3) | `gnn_anomaly_score >= 0.76 AND node_degree_zscore >= 0.105` | review | Cluster 3 |
-| R-20260513-005 | 特征异常欺诈团伙检测 (Cluster 4) | `gnn_anomaly_score >= 0.88 AND feature_dim_0_zscore >= 1.05` | block | Cluster 4 |
-
-**关键设计**: 规则以 `gnn_anomaly_score` 作为主信号 (继承 GNN 90%+ 的检测能力)，辅以 degree/feature 条件细分风险类型。
-
-### Stage 3: 沙盒回测结果
-
-**第一轮回测** (LLM 初始生成 + 阈值搜索):
-
-| 规则 | Recall | Precision | FPR | F1 | 合格 |
-|------|--------|-----------|-----|-----|------|
-| 高连接度欺诈环 (Cluster 0) | 1.6% | 50.9% | — | 0.030 | 否 |
-| 极高连接度小团伙 (Cluster 1) | 6.5% | 70.1% | — | 0.119 | 否 |
-| 高密度欺诈环 (Cluster 2) | 43.4% | 81.7% | — | 0.567 | 否 |
-| 高连通欺诈团伙 (Cluster 3) | 2.7% | 60.0% | — | 0.051 | 否 |
-| 特征异常团伙 (Cluster 4) | 1.2% | 27.2% | — | 0.023 | 否 |
-| **组合 (OR)** | **44.0%** | **78.1%** | **0.59%** | — | — |
-
-**闭环迭代优化过程** (4 轮自动优化):
+闭环迭代优化过程:
 
 | 迭代轮次 | 合格规则数 | 综合 Recall | 综合 Precision | 综合 FPR | 状态 |
 |---------|-----------|------------|---------------|---------|------|
@@ -454,29 +414,87 @@ GNN 从 39,357 个节点中检测出 **500 个高风险节点**，聚类为 **5 
 | 第 3 轮 | 0/4 | 31.4% | 72.3% | 0.58% | 退化 |
 | 第 4 轮 | 3/5 | **81.5%** | **71.0%** | **1.60%** | 恢复最优 |
 
-**最终回测结果** (第 4 轮):
+**最终**: 从 23 条规则中筛选出 **12 条合格规则**沉淀至知识库。
 
-| 规则 | Recall | Precision | FPR | F1 | 合格 |
-|------|--------|-----------|-----|-----|------|
-| 高连接度欺诈环 (Cluster 0) | **80.8%** | **74.1%** | 1.36% | **0.773** | Yes |
-| 极高连接度小团伙 (Cluster 1) | 0.8% | 14.0% | 0.23% | 0.015 | 否 |
-| 高密度欺诈环 (Cluster 2) | **58.4%** | **89.2%** | 0.34% | **0.706** | Yes |
-| 高连通欺诈团伙 (Cluster 3) | **79.7%** | **76.3%** | 1.19% | **0.780** | Yes |
-| 特征异常团伙 (Cluster 4) | 0.0% | 0.0% | 0.05% | 0.000 | 否 |
-| **组合 (OR)** | **81.5%** | **71.0%** | **1.60%** | — | — |
+#### Amazon (GNN F1=92.36%)
 
-**合格标准**: F1 >= 0.60, Recall >= 0.50, FPR <= 0.05, Precision >= 0.40
+GNN 检测到 500 个高风险节点，聚类为 5 种风险模式。
 
-### Stage 4: 规则沉淀
+闭环迭代优化过程:
 
-通过 4 轮闭环迭代，共从 23 条规则中筛选出 **12 条优质规则**沉淀至知识库，覆盖 Cluster 0、2、3 三种主要风险模式。
+| 迭代轮次 | 合格规则数 | 综合 Recall | 综合 Precision | 综合 FPR | 状态 |
+|---------|-----------|------------|---------------|---------|------|
+| 初始 | 0/3 | 48.4% | 91.5% | 0.33% | 起点 |
+| 第 1 轮 | 0/3 | 54.6% | 95.1% | 0.21% | 改善 |
+| 第 2 轮 | 1/3 | 67.1% | 94.8% | 0.27% | 改善 |
+| 第 3 轮 | 1/6 | 77.6% | 69.1% | 2.56% | 无改善 |
+| 第 4 轮 | 1/5 | **79.8%** | **88.8%** | **0.75%** | 改善 |
 
-### 效果对比
+**最终**: 沉淀 **6 条合格规则**至知识库。
 
-| 版本 | Recall | Precision | FPR | 合格规则 | 关键改动 |
-|------|--------|-----------|-----|---------|---------|
-| 初始版本 | 2.4% | 0.75% | 15.6% | **0 条** | 仅 degree/feature 阈值规则 |
-| 当前版本 | **81.5%** | **71.0%** | **1.60%** | **12 条** | +GNN 嵌入字段 +CoT Prompt +阈值搜索 +迭代稳定性 |
+#### Yelp (GNN F1=70.69%)
+
+GNN 检测到 500 个高风险节点，聚类为 5 种风险模式。
+
+闭环迭代优化过程:
+
+| 迭代轮次 | 合格规则数 | 综合 Recall | 综合 Precision | 综合 FPR | 状态 |
+|---------|-----------|------------|---------------|---------|------|
+| 初始 | 0/5 | 20.0% | 54.7% | 2.81% | 起点 |
+| 第 1 轮 | 0/5 | 23.8% | 40.4% | 5.96% | 改善 |
+| 第 2 轮 | 0/10 | 23.9% | 39.8% | 6.14% | 无改善 |
+| 第 3 轮 | 0/15 | 24.6% | 39.3% | 6.48% | 改善 |
+| 第 4 轮 | 0/20 | **24.6%** | **39.5%** | **6.42%** | 改善 |
+
+**结果**: **0 条合格规则**。Yelp 的 GNN 模型偏弱 (F1=70.7%)，导致规则质量不足以达标。
+
+### 跨数据集结果汇总
+
+| 数据集 | GNN Macro-F1 | GNN AUC | 规则 Recall | 规则 Precision | 规则 FPR | 合格规则 |
+|--------|-------------|---------|------------|---------------|---------|---------|
+| **T-Finance** | 88.89% | 95.02% | **81.5%** | 71.0% | 1.60% | **12** |
+| **Amazon** | 92.36% | 96.49% | **79.8%** | **88.8%** | **0.75%** | **6** |
+| Yelp | 70.69% | 83.10% | 24.6% | 39.5% | 6.42% | 0 |
+
+**关键发现**:
+- GNN F1 越高 → 合格规则越多。Amazon (92.4%) 和 T-Finance (88.9%) 产生了大量合格规则，而 Yelp (70.7%) 完全失败
+- Pipeline 的上限被 GNN 模型质量锁死
+
+---
+
+## 消融实验
+
+为了验证 `gnn_anomaly_score` 字段在规则中的实际贡献，我们在 Yelp 和 Amazon 上进行了消融实验: 去掉 GNN 字段，只允许 LLM 使用 `node_degree`、`node_degree_zscore`、`feature_dim_X`、`feature_dim_X_zscore` 生成规则。
+
+### 消融实验设置
+
+- **基线 (Baseline)**: 规则可使用全部 6 个字段 (含 gnn_anomaly_score, embedding_cluster_id)
+- **消融 (No GNN Fields)**: 规则只能使用 4 个图统计字段 (degree + feature)
+- **方法**: 通过 `configs/ablation_*_no_gnn.yaml` 配置文件控制，pipeline 自动选择对应的 Prompt 模板并禁用 GNN 输出注入
+
+### Yelp 消融结果
+
+| 指标 | 基线 (含 GNN 字段) | 消融 (无 GNN 字段) | 变化 |
+|------|-------------------|-------------------|------|
+| Combined Recall | 24.62% | 28.07% | +3.5% |
+| Combined Precision | 39.45% | 22.16% | **-17.3%** |
+| FPR | 6.42% | 16.76% | **+10.3%** |
+| 合格规则数 | 0 | 0 | - |
+
+### Amazon 消融结果
+
+| 指标 | 基线 (含 GNN 字段) | 消融 (无 GNN 字段) | 变化 |
+|------|-------------------|-------------------|------|
+| Combined Recall | **79.78%** | 49.21% | **-30.6%** |
+| Combined Precision | **88.75%** | 42.80% | **-46.0%** |
+| FPR | **0.75%** | 4.85% | +4.1% |
+| 合格规则数 | **6** | **0** | **-6** |
+
+### 消融实验结论
+
+1. **`gnn_anomaly_score` 是规则质量的核心支柱**: Amazon 上去掉后 Recall 从 80% 跌至 49%，Precision 从 89% 跌至 43%，合格规则从 6 条降为 0
+2. **GNN 字段的核心作用是精确过滤**: Yelp 消融中 Recall 反而微升 (+3.5%)，但 Precision 暴跌 (-17.3%)，FPR 飙升 (+10.3%)。没有 GNN 分数作为过滤条件，规则会放宽到误杀大量正常节点
+3. **规则本质上是 GNN 判断的可解释包装**: 所有合格规则的第一条件都是 `gnn_anomaly_score >= 0.68`，然后加 degree/feature 条件细分风险类型。规则继承了 GNN 的检测能力，并增加了业务可解释性
 
 ---
 
@@ -519,6 +537,25 @@ GNN 从 39,357 个节点中检测出 **500 个高风险节点**，聚类为 **5 
 - **Early stop**: 连续 2 轮无改善则停止迭代
 - **退化回退**: 如果迭代后整体变差，自动回退到历史最优规则集
 
+### 优化 5: 跨数据集兼容性修复
+
+解决 yelp (32 维特征) 和 amazon (25 维特征) 数据集上的 LLM 解析失败问题:
+
+- **max_tokens 扩容**: 2000 → 4096，避免高维特征数据集的 LLM 输出截断
+- **动态异常比例**: 移除硬编码的 tfinance 异常比例，改为 `{anomaly_ratio}` 占位符
+- **LLM 输出解析增强**: 三层 JSON 解析 + 截断恢复 (找最后一个 `}` 并补 `]`)
+- **Prompt 字段一致性**: 约束行与可用字段表保持同步
+
+---
+
+## 效果演进对比
+
+| 版本 | Recall | Precision | FPR | 合格规则 | 关键改动 |
+|------|--------|-----------|-----|---------|---------|
+| 初始版本 | 2.4% | 0.75% | 15.6% | **0 条** | 仅 degree/feature 阈值规则 |
+| 第二次优化 | **81.5%** | **71.0%** | **1.60%** | **12 条** | +GNN 嵌入字段 +CoT Prompt +阈值搜索 +迭代稳定性 |
+| 跨数据集扩展 | 79.8% | 88.8% | 0.75% | **18 条** (TF+AM) | +Yelp/Amazon 兼容 +消融实验 |
+
 ---
 
 ## 输出文件说明
@@ -531,19 +568,20 @@ GNN 从 39,357 个节点中检测出 **500 个高风险节点**，聚类为 **5 
 | `outputs/generated_rules.json` | LLM 生成的风控规则 (含阈值优化) | Stage 2 |
 | `outputs/evaluation_report.json` | 沙盒回测指标: TP/FP/FN/TN, Recall, Precision, FPR | Stage 3 |
 | `outputs/qualified_rules.json` | 通过回测的优质规则 (沉淀至知识库) | Stage 4 |
+| `outputs/_llm_raw_response.txt` | LLM 原始响应 (调试用，含 token 统计) | Stage 2 |
 
 ---
 
 ## 评估指标
 
-| 指标              | 含义                     | 目标   |
-|-------------------|--------------------------|--------|
-| Macro-F1          | 整体分类平衡性            | > 0.70 |
-| AUC-ROC           | 排序质量                  | > 0.85 |
-| Recall@TopK       | 高风险节点召回率           | > 0.80 |
-| FPR (误杀率)       | 误伤正常用户比例           | < 0.05 |
-| Rule Coverage     | 规则覆盖的异常类型数       | > 80%  |
-| Rule Precision    | 生成规则中有效规则占比      | > 60%  |
+| 指标              | 含义                     | 合格标准   |
+|-------------------|--------------------------|-----------|
+| Macro-F1          | 整体分类平衡性            | > 0.70    |
+| AUC-ROC           | 排序质量                  | > 0.85    |
+| Recall (召回率)    | 异常节点被抓到的比例       | >= 0.50   |
+| Precision (精确率) | 标记为异常中真正异常的比例 | >= 0.40   |
+| FPR (误杀率)       | 正常用户被误伤的比例       | <= 0.05   |
+| F1 (规则级)        | 单条规则的 F1            | >= 0.60   |
 
 ---
 
@@ -552,12 +590,12 @@ GNN 从 39,357 个节点中检测出 **500 个高风险节点**，聚类为 **5 
 1. **GNN + LLM 协同**: 将图神经网络的结构化风险感知与 LLM 的规则生成能力结合，规则直接继承 GNN 的检测精度
 2. **自主进化闭环**: GNN 感知 → LLM 生成 → 沙盒验证 → 知识库沉淀 → 反馈优化，规则越迭代越精准
 3. **GNN 嵌入驱动规则**: 规则可直接使用 `gnn_anomaly_score` 字段，解决了简单阈值规则无法有效表达图结构模式的核心瓶颈
-4. **Chain-of-Thought Prompt**: 引导 LLM 先分析分布差异再设定阈值，避免随意出值
-5. **定向反馈优化**: 不再传整份评估报告给 LLM，而是为每条规则生成具体诊断 (差距 + 方向 + 幅度)
-6. **阈值微调搜索**: LLM 生成规则后自动贪心搜索最优阈值，作为规则质量保底
-7. **迭代稳定性保障**: 累积器 + 历史最优追踪 + Early stop + 退化回退，防止闭环迭代反而变差
-8. **Beta 小波频谱分析**: 利用 BWGNN 的多尺度频谱特性，捕获传统 GNN 难以识别的异常模式
-9. **数据分布感知**: 自动计算图级统计分布，辅助 LLM 设定合理的规则阈值
+4. **消融实验验证**: 通过禁用 GNN 字段的对照实验，量化证明了 `gnn_anomaly_score` 对规则质量的贡献 (Amazon Recall -30.6%, Precision -46.0%)
+5. **Chain-of-Thought Prompt**: 引导 LLM 先分析分布差异再设定阈值，避免随意出值
+6. **定向反馈优化**: 不再传整份评估报告给 LLM，而是为每条规则生成具体诊断 (差距 + 方向 + 幅度)
+7. **阈值微调搜索**: LLM 生成规则后自动贪心搜索最优阈值，作为规则质量保底
+8. **迭代稳定性保障**: 累积器 + 历史最优追踪 + Early stop + 退化回退，防止闭环迭代反而变差
+9. **跨数据集通用**: 支持 tfinance / yelp / amazon / tsocial 四个数据集，含数据集自适应的 Prompt 和解析逻辑
 10. **多 LLM 后端支持**: 统一的 OpenAI 兼容接口，一键切换 DashScope / OpenAI / Ollama
 
 ---

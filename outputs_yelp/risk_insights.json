@@ -1,0 +1,254 @@
+{
+  "summary": {
+    "total_nodes": 45954,
+    "total_anomaly_detected": 500,
+    "anomaly_ratio": 0.010880445663054359,
+    "num_risk_patterns": 5,
+    "avg_anomaly_score": 0.9838278889656067,
+    "description": "Detected 500 anomalous nodes (1.09%) across 5 distinct risk patterns in a graph with 45,954 nodes and 8,097,302 edges."
+  },
+  "risk_patterns": [
+    {
+      "cluster_id": 0,
+      "num_nodes": 162,
+      "avg_anomaly_score": 0.9826533794403076,
+      "max_anomaly_score": 0.9886130094528198,
+      "degree_stats": {
+        "mean": 138.53703703703704,
+        "max": 481,
+        "min": 4,
+        "std": 96.02386141783313
+      },
+      "salient_feature_dims": [
+        3,
+        15
+      ],
+      "feature_z_scores": {
+        "3": -1.5540988445281982,
+        "15": -1.7831608057022095
+      },
+      "subgraph_stats": {
+        "internal_edges": 256,
+        "local_density": 0.009815198220995322,
+        "total_neighbors": 16049
+      },
+      "risk_description": "Risk Pattern #0: 162 anomalous nodes detected. High connectivity (avg degree=139), suggesting organized group behavior. Abnormally low on feature dims [3, 15]. Avg anomaly score: 0.983.",
+      "sample_nodes": [
+        41078,
+        41188,
+        6678,
+        6585,
+        41104,
+        42660,
+        29780,
+        6501,
+        45555,
+        45184,
+        41705,
+        44327,
+        44213,
+        44474,
+        6242,
+        44622,
+        45408,
+        6218,
+        45110,
+        42273
+      ]
+    },
+    {
+      "cluster_id": 1,
+      "num_nodes": 158,
+      "avg_anomaly_score": 0.9788298010826111,
+      "max_anomaly_score": 0.986070454120636,
+      "degree_stats": {
+        "mean": 143.69620253164558,
+        "max": 504,
+        "min": 8,
+        "std": 102.69012677700798
+      },
+      "salient_feature_dims": [
+        15
+      ],
+      "feature_z_scores": {
+        "15": -1.5464558601379395
+      },
+      "subgraph_stats": {
+        "internal_edges": 248,
+        "local_density": 0.009997581230347496,
+        "total_neighbors": 16389
+      },
+      "risk_description": "Risk Pattern #1: 158 anomalous nodes detected. High connectivity (avg degree=144), suggesting organized group behavior. Abnormally low on feature dims [15]. Avg anomaly score: 0.979.",
+      "sample_nodes": [
+        44214,
+        40334,
+        41230,
+        43402,
+        19527,
+        42708,
+        45283,
+        42506,
+        41730,
+        42266,
+        45821,
+        42478,
+        18878,
+        43379,
+        43463,
+        41514,
+        42787,
+        41347,
+        6177,
+        20099
+      ]
+    },
+    {
+      "cluster_id": 2,
+      "num_nodes": 84,
+      "avg_anomaly_score": 0.9914774894714355,
+      "max_anomaly_score": 0.9949753284454346,
+      "degree_stats": {
+        "mean": 147.91666666666666,
+        "max": 391,
+        "min": 10,
+        "std": 97.88272968119182
+      },
+      "salient_feature_dims": [
+        3,
+        15,
+        21,
+        22
+      ],
+      "feature_z_scores": {
+        "3": -2.003676176071167,
+        "15": -1.9407100677490234,
+        "21": 1.6348659992218018,
+        "22": 2.459210157394409
+      },
+      "subgraph_stats": {
+        "internal_edges": 122,
+        "local_density": 0.017498565691336777,
+        "total_neighbors": 9105
+      },
+      "risk_description": "Risk Pattern #2: 84 anomalous nodes detected. High connectivity (avg degree=148), suggesting organized group behavior. Abnormally high on feature dims [21, 22]. Abnormally low on feature dims [3, 15]. Avg anomaly score: 0.991.",
+      "sample_nodes": [
+        41569,
+        41191,
+        44345,
+        41479,
+        42457,
+        43433,
+        44045,
+        42438,
+        42760,
+        26100,
+        42330,
+        42644,
+        43375,
+        20148,
+        42441,
+        45508,
+        42910,
+        6465,
+        41665,
+        44851
+      ]
+    },
+    {
+      "cluster_id": 3,
+      "num_nodes": 71,
+      "avg_anomaly_score": 0.984132707118988,
+      "max_anomaly_score": 0.9921470284461975,
+      "degree_stats": {
+        "mean": 159.9718309859155,
+        "max": 328,
+        "min": 18,
+        "std": 85.08305334830213
+      },
+      "salient_feature_dims": [],
+      "feature_z_scores": {},
+      "subgraph_stats": {
+        "internal_edges": 105,
+        "local_density": 0.02112676056338028,
+        "total_neighbors": 8644
+      },
+      "risk_description": "Risk Pattern #3: 71 anomalous nodes detected. High connectivity (avg degree=160), suggesting organized group behavior. Avg anomaly score: 0.984.",
+      "sample_nodes": [
+        41112,
+        43346,
+        41772,
+        7331,
+        20260,
+        42687,
+        43090,
+        40858,
+        42513,
+        15806,
+        41502,
+        43868,
+        43495,
+        40087,
+        41584,
+        43694,
+        43070,
+        44611,
+        42001,
+        42504
+      ]
+    },
+    {
+      "cluster_id": 4,
+      "num_nodes": 25,
+      "avg_anomaly_score": 0.9964579939842224,
+      "max_anomaly_score": 0.998730480670929,
+      "degree_stats": {
+        "mean": 157.6,
+        "max": 321,
+        "min": 30,
+        "std": 92.70598686169086
+      },
+      "salient_feature_dims": [
+        3,
+        4,
+        15,
+        21,
+        22
+      ],
+      "feature_z_scores": {
+        "3": -3.036313056945801,
+        "4": -1.7306337356567383,
+        "15": -2.2164156436920166,
+        "21": 1.5792183876037598,
+        "22": 2.8527610301971436
+      },
+      "subgraph_stats": {
+        "internal_edges": 27,
+        "local_density": 0.045,
+        "total_neighbors": 3513
+      },
+      "risk_description": "Risk Pattern #4: 25 anomalous nodes detected. High connectivity (avg degree=158), suggesting organized group behavior. Abnormally high on feature dims [21, 22]. Abnormally low on feature dims [3, 4, 15]. Avg anomaly score: 0.996.",
+      "sample_nodes": [
+        43489,
+        41750,
+        45378,
+        45240,
+        24310,
+        42361,
+        45241,
+        20229,
+        44708,
+        43398,
+        43069,
+        41335,
+        40354,
+        43401,
+        17434,
+        44066,
+        43191,
+        41113,
+        41246,
+        41238
+      ]
+    }
+  ]
+}

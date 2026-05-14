@@ -1,0 +1,84 @@
+{
+  "total_rules": 5,
+  "qualified_rules": 0,
+  "individual_results": [
+    {
+      "rule_id": "R-20260514-OPT-001",
+      "name": "High-degree group with low feature_15 and high feature_22",
+      "tp": 289,
+      "fp": 244,
+      "tn": 39033,
+      "fn": 6388,
+      "recall": 0.04328291148719485,
+      "precision": 0.5422138836772983,
+      "fpr": 0.0062122870891361355,
+      "f1": 0.08016643550624132,
+      "flagged": 533,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-002",
+      "name": "Moderate-degree group with high feature_0 and low feature_24",
+      "tp": 941,
+      "fp": 3152,
+      "tn": 36125,
+      "fn": 5736,
+      "recall": 0.14093155608806351,
+      "precision": 0.22990471536770096,
+      "fpr": 0.0802505282990045,
+      "f1": 0.17474466109563602,
+      "flagged": 4093,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-003",
+      "name": "Ultra-high-connectivity group (no strong feature signal)",
+      "tp": 692,
+      "fp": 3497,
+      "tn": 35780,
+      "fn": 5985,
+      "recall": 0.10363935899355999,
+      "precision": 0.16519455717354978,
+      "fpr": 0.08903429487995519,
+      "f1": 0.12736977728695012,
+      "flagged": 4189,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-004",
+      "name": "Extreme high-connectivity group with multi-feature anomalies",
+      "tp": 267,
+      "fp": 231,
+      "tn": 39046,
+      "fn": 6410,
+      "recall": 0.03998801857121462,
+      "precision": 0.536144578313253,
+      "fpr": 0.0058813045802887185,
+      "f1": 0.07442508710801393,
+      "flagged": 498,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260514-OPT-005",
+      "name": "High-connectivity group with feature_21 and feature_22 elevation",
+      "tp": 325,
+      "fp": 337,
+      "tn": 38940,
+      "fn": 6352,
+      "recall": 0.048674554440617045,
+      "precision": 0.4909365558912387,
+      "fpr": 0.00858008503704458,
+      "f1": 0.0885679247853931,
+      "flagged": 662,
+      "qualified": false
+    }
+  ],
+  "combined_result": {
+    "combined_recall": 0.2806649692975887,
+    "combined_precision": 0.22156538188697092,
+    "combined_fpr": 0.1676299106347226,
+    "total_flagged": 8458,
+    "coverage": 0.2806649692975887
+  },
+  "qualified_rule_ids": []
+}

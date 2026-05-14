@@ -136,8 +136,17 @@ def run_pipeline(config, mode='full'):
 
     # 阈值微调搜索: 在 LLM 生成规则后自动搜索最优阈值
     gnn_outputs = {'probs': probs, 'embeddings': embeddings}
+
+    # 消融实验: 禁用 GNN 字段时不传递 gnn_outputs
+    ablation = config['pipeline'].get('ablation', None)
+    if ablation == 'no_gnn':
+        print(f"  [ABLATION] 禁用 GNN 字段 (gnn_anomaly_score, embedding_cluster_id)")
+        gnn_outputs_for_rules = None
+    else:
+        gnn_outputs_for_rules = gnn_outputs
+
     print(f"  LLM 生成 {len(rules)} 条规则，开始阈值微调搜索...")
-    rules = generator.threshold_search(rules, trainer.graph, gnn_outputs=gnn_outputs)
+    rules = generator.threshold_search(rules, trainer.graph, gnn_outputs=gnn_outputs_for_rules)
     generator.save(rules, output_dir)
     print(f"  最终保留 {len(rules)} 条规则 (含阈值优化)")
 
@@ -152,7 +161,7 @@ def run_pipeline(config, mode='full'):
     evaluator = RuleEvaluator(config)
 
     # 评估所有规则
-    report = evaluator.evaluate(rules, trainer.graph, gnn_outputs=gnn_outputs)
+    report = evaluator.evaluate(rules, trainer.graph, gnn_outputs=gnn_outputs_for_rules)
     evaluator.save_report(report, output_dir)
 
     # ================================================================
@@ -202,10 +211,10 @@ def run_pipeline(config, mode='full'):
             break
 
         # 对优化后的规则再做阈值搜索
-        optimized_rules = generator.threshold_search(optimized_rules, trainer.graph, gnn_outputs=gnn_outputs)
+        optimized_rules = generator.threshold_search(optimized_rules, trainer.graph, gnn_outputs=gnn_outputs_for_rules)
 
         # 重新评估
-        new_report = evaluator.evaluate(optimized_rules, trainer.graph, gnn_outputs=gnn_outputs)
+        new_report = evaluator.evaluate(optimized_rules, trainer.graph, gnn_outputs=gnn_outputs_for_rules)
 
         # 累积本轮结果 (不覆盖历史)
         all_report_results.extend(new_report['individual_results'])
