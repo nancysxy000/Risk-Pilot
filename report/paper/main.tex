@@ -1,286 +1,296 @@
-% RiskPilot — ACM 格式论文
-% 使用 acmart 文档类 (ACM 官方 LaTeX 模板)
-% 编译方式: pdflatex main.tex → bibtex main → pdflatex main.tex × 2
+% RiskPilot — ACM SIGCONF format course report (≤6 pages incl. refs & appendix)
+% Compile: pdflatex main → bibtex main → pdflatex main × 2
 
 \documentclass[sigconf,nonacm]{acmart}
-% sigconf: ACM 会议论文格式 (双栏)
-% nonacm: 去掉 ACM 版权信息 (课程论文用)
 
 \usepackage{booktabs}
 \usepackage{graphicx}
-\usepackage{subfigure}
-\usepackage{algorithm}
-\usepackage{algorithmic}
 \usepackage{amsmath}
+\usepackage{balance}
 \usepackage{xcolor}
-\usepackage{hyperref}
 
-% ============================================================
-% 论文元信息
-% ============================================================
-\title{RiskPilot: An Autonomous Evolution Engine for Financial Risk Control Rules via GNN-LLM Collaboration}
+% Tight layout for 6-page limit
+\settopmatter{printacmref=false}
+\setcopyright{none}
+\renewcommand\footnotetextcopyrightpermission[1]{}
 
-\author{Nancy Su}
+\title{RiskPilot: An Autonomous Evolution Engine for Financial Risk Control Rules via GNN--LLM Collaboration}
+
+\author{Xiaoye Su}
 \affiliation{%
-  \institution{Your University}
-  \city{City}
-  \country{Country}
-}
-\email{nancy@example.com}
+  \institution{Hongkong University of Science and Technology(Guangzhou)}
+  \city{Guangzhou}
+  \country{China}}
+\email{xsu315@connect.hkust-gz.edu.cn}
 
-\author{Yifei XX}
+\author{Yifei Shi}
 \affiliation{%
-  \institution{Your University}
-  \city{City}
-  \country{Country}
-}
+  \institution{Hongkong University of Science and Technology(Guangzhou)}
+  \city{Guangzhou}
+  \country{China}}
 \email{yifei@example.com}
 
-% ============================================================
-% 摘要
-% ============================================================
 \begin{abstract}
-Mobile payment platforms face escalating financial risks including organized fraud, money laundering, and account theft.
-Traditional rule-based risk control systems suffer from slow iteration, limited coverage, and high operational costs.
-We propose \textbf{RiskPilot}, an autonomous evolution engine that forms a closed-loop pipeline:
-(1)~a \textbf{GNN perception layer} based on Beta Wavelet Graph Neural Networks (BWGNN) that detects anomalous nodes and extracts structured risk insights from transaction graphs;
-(2)~an \textbf{LLM strategy layer} that automatically generates and optimizes executable risk control rules via retrieval-augmented generation (RAG);
-(3)~a \textbf{sandbox validation layer} that backtests rules on labeled datasets with recall, precision, and false positive rate metrics;
-(4)~a \textbf{rule knowledge base} that accumulates qualified rules for iterative refinement.
-Experiments on the T-Finance dataset (39K nodes, 42M edges) demonstrate that BWGNN identifies 5 distinct fraud patterns with near-perfect anomaly scores, and the closed-loop mechanism enables continuous rule quality improvement.
+Financial platforms rely on hand-crafted risk rules that lag behind evolving fraud tactics.
+We present \textbf{RiskPilot}, a closed-loop system that bridges graph neural network (GNN) perception and large language model (LLM) rule synthesis.
+Stage~1 trains Beta Wavelet GNN (BWGNN)~\cite{tang2022rethinking} for anomaly detection and extracts structured risk insights via embedding clustering.
+Stage~2 uses retrieval-augmented generation (RAG)~\cite{lewis2020retrieval} and chain-of-thought prompting to generate executable JSON rules, with greedy threshold search and iterative refinement.
+Stage~3 backtests rules on labeled graphs; Stage~4 deposits qualified rules into a vector knowledge base.
+On T-Finance, Yelp, and Amazon fraud graphs, BWGNN outperforms four classical baselines by 11.9--37.4\% Macro-F1.
+The full pipeline yields up to 79.8\% rule recall and 6 qualified rules on Amazon; ablation shows that \texttt{gnn\_anomaly\_score} is essential---without it, T-Finance recall drops from 69.9\% to 0.3\%.
 \end{abstract}
 
-% ACM 关键词
-\keywords{Graph Neural Networks, Anomaly Detection, Financial Risk Control, Large Language Models, Rule Generation}
+\keywords{Graph neural networks, anomaly detection, financial risk control, large language models, rule generation}
 
 \begin{document}
 \maketitle
 
 % ============================================================
-% 1. Introduction
-% ============================================================
 \section{Introduction}
+\label{sec:intro}
 
-% 1.1 背景与挑战
-Mobile payment has become an indispensable part of daily life, with platforms like WeChat Pay serving billions of transactions.
-However, the convenience and scale of mobile payment also attract increasingly sophisticated financial risks:
-\begin{itemize}
-  \item \textbf{Accelerating risk evolution}: Fraud methods are upgrading toward intelligent, organized, and covert patterns, outpacing traditional rule-based defenses.
-  \item \textbf{Diverse and long-tailed risk patterns}: Effective detection requires integrating multi-modal data including text, user profiles, behavioral sequences, and transaction networks.
-  \item \textbf{Operational inefficiency}: Manual case-by-case review is costly, slow, and degrades user experience.
-\end{itemize}
+Mobile payment fraud is increasingly organized and graph-structured: attackers form dense transaction rings while mimicking normal feature profiles.
+Two toolchains address complementary gaps. GNNs detect structural anomalies but output scores and embeddings, not deployable policies.
+LLMs generate readable rules but lack graph perception and tend to emit arbitrary thresholds.
 
-% 1.2 动机
-Existing graph-based anomaly detection methods~\cite{tang2022rethinking} can effectively identify suspicious nodes, but their numerical outputs (anomaly scores, embeddings) cannot be directly translated into actionable risk control rules.
-Meanwhile, Large Language Models (LLMs) excel at generating structured text but lack the ability to perceive graph-structural risk patterns.
-
-% 1.3 贡献
-We propose \textbf{RiskPilot}, which bridges this gap through a four-stage closed-loop pipeline.
-Our main contributions are:
+\textbf{RiskPilot} closes this loop in four stages: (1)~GNN perception and insight extraction; (2)~LLM rule generation with RAG; (3)~sandbox backtesting; (4)~knowledge-base accumulation with feedback.
+Our contributions are:
 \begin{enumerate}
-  \item A novel \textbf{GNN-to-LLM insight bridge} that converts GNN numerical outputs into structured risk descriptions consumable by LLMs (Section~\ref{sec:insight}).
-  \item An \textbf{autonomous rule evolution loop}: GNN perception $\rightarrow$ LLM rule generation $\rightarrow$ sandbox validation $\rightarrow$ knowledge base accumulation $\rightarrow$ feedback optimization.
-  \item Experimental validation on the T-Finance dataset showing the effectiveness of spectral-based anomaly detection and the feasibility of automated rule generation.
+  \item A \textbf{GNN-to-LLM insight bridge} that clusters anomaly embeddings and emits JSON risk patterns (Section~\ref{sec:method}).
+  \item An \textbf{autonomous rule evolution loop} with threshold search, targeted LLM feedback, and early-stop stability.
+  \item \textbf{Multi-dataset evaluation} on T-Finance, Yelp, and Amazon with baselines, ablations, and component analysis.
 \end{enumerate}
 
-
-% ============================================================
-% 2. Related Work
 % ============================================================
 \section{Related Work}
+\label{sec:related}
 
-\subsection{Graph-Based Anomaly Detection}
-% GNN 异常检测综述: GCN, GAT, GraphSAGE, 频谱方法
-Graph Neural Networks (GNNs) have been widely applied to fraud detection in financial networks~\cite{tang2022rethinking}.
-Most GNN-based methods operate in the spatial domain (e.g., GCN, GAT, GraphSAGE), aggregating neighbor information iteratively.
-However, Tang et al.~\cite{tang2022rethinking} revealed that anomalous nodes exhibit distinct \textit{spectral} characteristics—they tend to have higher energy in specific frequency bands.
-Their proposed BWGNN uses Beta wavelet bases to decompose graph signals at multiple scales, achieving state-of-the-art performance on financial anomaly detection benchmarks.
+\textbf{Graph anomaly detection.}
+Spatial GNNs (GCN~\cite{kipf2017semi}, GAT~\cite{velickovic2018graph}, GraphSAGE~\cite{hamilton2017inductive}) aggregate neighborhood signals but may miss spectral anomalies.
+BWGNN~\cite{tang2022rethinking} uses Beta wavelet filters on the graph Laplacian for multi-scale spectral analysis and achieves strong results on financial graphs~\cite{liu2022bond}.
 
-\subsection{LLM for Risk Control}
-% LLM 在风控中的应用
-Recent works have explored using LLMs for security and risk analysis, including vulnerability detection, threat intelligence summarization, and policy generation.
-However, applying LLMs to \textit{graph-structural} risk pattern understanding and \textit{executable rule generation} remains largely unexplored.
+\textbf{LLM for security and RAG.}
+LLMs have been applied to threat summarization and policy drafting, yet graph-structural fraud understanding and executable rule synthesis remain under-explored.
+RAG~\cite{lewis2020retrieval} supplies historical rules to constrain generation quality.
 
-\subsection{Retrieval-Augmented Generation}
-% RAG 技术
-RAG~\cite{lewis2020retrieval} enhances LLM generation quality by retrieving relevant context from external knowledge bases.
-We adopt RAG to supply the LLM with historically effective rules during rule generation and optimization.
-
-
-% ============================================================
-% 3. Methodology
 % ============================================================
 \section{Methodology}
+\label{sec:method}
 
 \subsection{System Overview}
-Figure~\ref{fig:pipeline} illustrates the RiskPilot pipeline.
+RiskPilot executes \textit{GNN Perception} $\rightarrow$ \textit{LLM Strategy} $\rightarrow$ \textit{Sandbox Validation} $\rightarrow$ \textit{Rule KB}, with RAG feeding prior rules back into generation.
 
-\begin{figure}[h]
-  \centering
-  % \includegraphics[width=\linewidth]{figures/pipeline.pdf}
-  \fbox{\parbox{0.9\linewidth}{\centering\vspace{2em}[Pipeline Figure Placeholder]\vspace{2em}}}
-  \caption{RiskPilot four-stage closed-loop pipeline: GNN Perception $\rightarrow$ LLM Strategy $\rightarrow$ Sandbox Validation $\rightarrow$ Rule Knowledge Base.}
-  \label{fig:pipeline}
-\end{figure}
+\subsection{Stage 1: GNN Perception}
+Given graph $G{=}(V,E)$, features $X$, and normalized Laplacian $\hat{L}$, BWGNN applies $d{+}1$ Beta wavelet bases
+$\psi_i(\lambda) = \frac{(\lambda/2)^i(1-\lambda/2)^{d-i}}{B(i{+}1,d{+}1-i)}$,
+producing anomaly probabilities $\hat{y}$ and embeddings $Z$.
 
-% ---- Stage 1 ----
-\subsection{Stage 1: GNN Perception Layer}
-\label{sec:insight}
+\textbf{Insight extraction.} Top-$K$ nodes ($K{=}500$, $\tau{=}0.5$) are clustered (KMeans, $C{=}5$).
+For each cluster we compute degree statistics, local subgraph density, feature $z$-scores, and a natural-language \texttt{risk\_description} consumed by the LLM.
 
-\subsubsection{Beta Wavelet GNN (BWGNN)}
-We adopt BWGNN~\cite{tang2022rethinking} as the backbone anomaly detector.
-Given a graph $G=(V,E)$ with node features $X \in \mathbb{R}^{N \times F}$ and normalized Laplacian $\hat{L}$, BWGNN constructs $d+1$ polynomial filter bases using Beta wavelets:
-\begin{equation}
-  \psi_i(\lambda) = \frac{(\lambda/2)^i (1-\lambda/2)^{d-i}}{B(i+1, d+1-i)}, \quad i=0,\ldots,d
-\end{equation}
-where $B(\cdot,\cdot)$ is the Beta function.
-Each basis captures a different frequency band, enabling multi-scale spectral analysis.
+\subsection{Stage 2: LLM Strategy}
+The LLM (Qwen-Plus via DashScope) receives risk insights, data-distribution statistics, and RAG-retrieved rules.
+It outputs JSON rules with \texttt{conditions} over fields such as \texttt{gnn\_anomaly\_score}, \texttt{embedding\_cluster\_id}, \texttt{node\_degree\_zscore}, and \texttt{feature\_dim\_X\_zscore}.
+Chain-of-thought prompts guide distribution analysis before threshold setting.
+After generation, \textbf{threshold search} greedily adjusts each threshold within $\pm 30\%$ to maximize $F_1 - 0.5 \cdot \max(0, \text{FPR} - 0.05)$.
+Up to 5 \textbf{closed-loop iterations} apply targeted feedback (threshold change $\leq 20\%$) with early stop after two non-improving rounds.
 
-The model outputs:
-\begin{itemize}
-  \item Anomaly probabilities: $\hat{y} = \text{softmax}(f_\theta(X, G)) \in \mathbb{R}^{N \times 2}$
-  \item Node embeddings: $Z = g_\theta(X, G) \in \mathbb{R}^{N \times H}$ (penultimate layer)
-\end{itemize}
+\subsection{Stages 3--4: Sandbox and Knowledge Base}
+Rules compile to Python predicates and run on the full labeled graph with injected GNN outputs.
+A rule \textit{qualifies} if $F_1 \geq 0.6$, Recall $\geq 0.5$, Precision $\geq 0.4$, and FPR $\leq 0.05$.
+Qualified rules are embedded into ChromaDB for RAG in subsequent rounds.
 
-\subsubsection{Risk Insight Extraction (Key Innovation)}
-We bridge GNN outputs to LLM inputs through structured insight extraction:
-
-\begin{enumerate}
-  \item \textbf{Anomaly node selection}: Select top-$K$ nodes by anomaly score above threshold $\tau$.
-  \item \textbf{Embedding clustering}: Apply KMeans on anomaly node embeddings to discover $C$ distinct risk patterns.
-  \item \textbf{Structural analysis}: For each cluster, compute degree statistics, local subgraph density, and feature z-scores.
-  \item \textbf{Natural language description}: Generate human-readable risk descriptions for LLM consumption.
-\end{enumerate}
-
-% ---- Stage 2 ----
-\subsection{Stage 2: LLM Strategy Layer}
-
-The LLM rule generator takes risk insights and historical rules (via RAG) as input, and outputs structured JSON rules:
-\begin{itemize}
-  \item Each rule contains: conditions (feature thresholds), logical operators (AND/OR), severity level, and action (block/review/alert).
-  \item A system prompt constrains the LLM to follow risk control best practices.
-  \item Failed rules from sandbox validation are fed back for iterative optimization.
-\end{itemize}
-
-% ---- Stage 3 ----
-\subsection{Stage 3: Sandbox Validation Layer}
-
-Rules are parsed into executable Python functions and backtested on the labeled dataset:
-\begin{equation}
-  \text{Recall} = \frac{TP}{TP+FN}, \quad
-  \text{FPR} = \frac{FP}{FP+TN}, \quad
-  \text{F1} = \frac{2 \cdot P \cdot R}{P + R}
-\end{equation}
-A rule is qualified if: $\text{F1} \geq 0.6$, $\text{Recall} \geq 0.5$, $\text{FPR} \leq 0.05$.
-
-% ---- Stage 4 ----
-\subsection{Stage 4: Rule Knowledge Base}
-
-Qualified rules are vectorized and stored in a ChromaDB collection for RAG retrieval in subsequent iterations, forming the closed-loop feedback mechanism.
-
-
-% ============================================================
-% 4. Experiments
 % ============================================================
 \section{Experiments}
+\label{sec:exp}
 
-\subsection{Datasets}
+\subsection{Setup}
+We evaluate on three public fraud graphs (40\% train / 20\% val / 40\% test, stratified).
+BWGNN trains for 100 epochs ($d{=}2$, hidden 64) on CPU.
+Table~\ref{tab:datasets} summarizes datasets; all experiments use identical splits for fair comparison.
 
-\begin{table}[h]
+\begin{table}[t]
 \caption{Dataset statistics.}
 \label{tab:datasets}
+\small
 \begin{tabular}{lrrrr}
 \toprule
-Dataset & Nodes & Edges & Features & Anomaly\% \\
+Dataset & Nodes & Edges & Feat. & Anomaly \\
 \midrule
-T-Finance & 39,357 & 42,445,086 & 10 & 4.58\% \\
-T-Social  & 5,781,065 & 73,105,508 & 2 & 3.01\% \\
-Yelp      & 45,954 & 3,846,979 & 32 & 6.67\% \\
-Amazon    & 11,944 & 4,398,392 & 25 & 9.50\% \\
+T-Finance & 39{,}357 & 42.4M & 10 & 4.58\% \\
+Yelp      & 45{,}954 &  8.1M & 32 & 14.53\% \\
+Amazon    & 11{,}944 &  9.6M & 25 & 6.87\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{GNN Anomaly Detection Results}
+\subsection{GNN Anomaly Detection}
+Table~\ref{tab:gnn} reports test Macro-F1 and AUC.
+BWGNN substantially exceeds Isolation Forest, LOF, One-Class SVM, and PCA+Mahalanobis on all datasets (details in Appendix~\ref{app:baselines}).
 
-% TODO: 填入实际训练指标
-\begin{table}[h]
-\caption{BWGNN anomaly detection performance on T-Finance (train ratio = 40\%).}
-\label{tab:gnn_results}
-\begin{tabular}{lccc}
+\begin{table}[t]
+\caption{BWGNN vs.\ best classical baseline (Macro-F1 / AUC).}
+\label{tab:gnn}
+\small
+\begin{tabular}{lccccc}
 \toprule
-Metric & Value \\
+Dataset & BWGNN F1 & BWGNN AUC & Best Trad. & Trad. F1 & $\Delta$F1 \\
 \midrule
-Macro-F1 & -- \\
-AUC-ROC & -- \\
-Recall & -- \\
-Precision & -- \\
+T-Finance & 90.4\% & 96.0\% & OCSVM  & 53.0\% & +37.4 \\
+Yelp      & 70.7\% & 83.1\% & OCSVM  & 58.8\% & +11.9 \\
+Amazon    & 92.4\% & 96.5\% & OCSVM  & 72.0\% & +20.3 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \subsection{Risk Pattern Discovery}
+On T-Finance, the insight extractor finds five patterns among 500 high-score nodes.
+Table~\ref{tab:clusters} shows representative clusters; all exhibit high connectivity and near-unity anomaly scores, consistent with organized fraud rings.
 
-The insight extractor identified 5 distinct risk clusters from the top-500 anomalous nodes:
-
-\begin{table}[h]
-\caption{Risk pattern clustering results on T-Finance.}
+\begin{table}[t]
+\caption{T-Finance risk clusters (top-500 anomalies).}
 \label{tab:clusters}
-\begin{tabular}{crrrrl}
+\small
+\begin{tabular}{crrrl}
 \toprule
-Cluster & Nodes & Avg Degree & Density & Score & Description \\
+Cl. & Nodes & Avg Deg. & Density & Pattern \\
 \midrule
-0 & 37  & 1,131 & 0.871 & 1.000 & Dense fraud ring core \\
-1 & 305 & 594   & 0.453 & 1.000 & Large organized group \\
-2 & 10  & 1,133 & 0.844 & 1.000 & Feature-anomalous clique \\
-3 & 16  & 1,130 & 0.742 & 1.000 & Small fraud gang \\
-4 & 132 & 879   & 0.669 & 1.000 & Mid-scale coordinated \\
+0 & 296 & 593  & 0.45 & Large organized ring \\
+1 &  10 & 1276 & 0.71 & Ultra-dense micro-gang \\
+2 &  35 & 1127 & 0.92 & High-cohesion clique \\
+3 &   6 & 1318 & 1.00 & Perfect-density cell \\
+4 & 153 & 924  & 0.77 & Mid-scale coordinated \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Rule Generation and Validation}
+\subsection{End-to-End Rule Generation}
+Table~\ref{tab:pipeline} summarizes the full RiskPilot pipeline.
+Amazon achieves the best rule quality (79.8\% combined recall, 0.75\% FPR, 6 qualified rules).
+Yelp yields no qualified rules because weaker GNN detection (70.7\% F1) limits usable \texttt{gnn\_anomaly\_score} signals.
+On T-Finance, closed-loop iteration improves qualified rules from 0 (initial round) to 5 deposited rules; best-round combined recall reaches 81.5\% (Appendix~\ref{app:iteration}).
 
-% TODO: 接入真实 LLM 后补充结果
-In mock mode, two rules were generated. The sandbox evaluation revealed that threshold tuning is critical: Rule 1 achieved 90.6\% recall but 83.9\% FPR (overly broad), while Rule 2 had only 0.5\% recall (overly strict).
-This validates the necessity of the closed-loop optimization mechanism.
+\begin{table}[t]
+\caption{Full RiskPilot pipeline results.}
+\label{tab:pipeline}
+\small
+\begin{tabular}{lccccr}
+\toprule
+Dataset & GNN F1 & Recall & Prec. & FPR & Qual. \\
+\midrule
+T-Finance & 90.4\% & 69.9\% & 76.0\% & 3.50\% & 5 \\
+Amazon    & 92.4\% & 79.8\% & 88.8\% & 0.75\% & 6 \\
+Yelp      & 70.7\% & 24.6\% & 39.5\% & 6.42\% & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
+\subsection{Component Analysis}
+Table~\ref{tab:ablation} compares variants on T-Finance and Amazon.
+\textbf{Statistical rules} (mechanical $z$-score conjunctions) achieve only 61.3\% recall and 2 qualified rules vs.\ 69.9\% and 5 for LLM rules---LLM condition selection is critical.
+\textbf{Single-round generation} (no iteration) reaches 85.3\% recall but only 2 qualified rules; iteration increases qualified count by 150\% while controlling FPR.
+\textbf{No-GNN-field ablation} collapses T-Finance recall to 0.3\% and Amazon recall to 49.2\%, confirming that rules are interpretable wrappers around GNN scores.
+
+\begin{table}[t]
+\caption{Component ablation (combined recall / qualified rules).}
+\label{tab:ablation}
+\small
+\begin{tabular}{lcc|cc}
+\toprule
+ & \multicolumn{2}{c|}{T-Finance} & \multicolumn{2}{c}{Amazon} \\
+Variant & Recall & Qual. & Recall & Qual. \\
+\midrule
+RiskPilot (full)     & 69.9\% & 5 & 79.8\% & 6 \\
+Statistical rules    & 61.3\% & 2 & 33.1\% & 0 \\
+No iteration (1 round) & 85.3\% & 2 & --- & --- \\
+No GNN fields        &  0.3\% & 0 & 49.2\% & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 % ============================================================
-% 5. Discussion
-% ============================================================
-\section{Discussion}
+\section{Discussion and Conclusion}
+\label{sec:disc}
 
-\subsection{Strengths}
-\begin{itemize}
-  \item The GNN-to-LLM insight bridge enables structural risk patterns to be consumed by language models.
-  \item The closed-loop design ensures continuous rule quality improvement without manual intervention.
-  \item Beta wavelet spectral analysis captures anomaly patterns that spatial GNNs miss.
-\end{itemize}
+\textbf{Findings.}
+(1)~Graph structure is indispensable: BWGNN leads classical methods by large margins, especially on T-Finance (+37.4\% F1).
+(2)~Rule quality is bounded by GNN quality---Yelp's weaker detector prevents any rule from passing sandbox gates.
+(3)~The GNN-to-LLM bridge is the key enabler: without \texttt{gnn\_anomaly\_score}, rules reduce to ineffective feature thresholds.
+(4)~Closed-loop iteration improves \textit{rule portfolio quality} (count and diversity), not just single-round recall.
 
-\subsection{Limitations and Future Work}
-\begin{itemize}
-  \item Current results use mock LLM rules; real LLM integration is needed for full validation.
-  \item The insight extractor relies on KMeans clustering, which assumes spherical clusters—density-based methods (e.g., DBSCAN) may better capture irregular fraud patterns.
-  \item Temporal dynamics (transaction sequences over time) are not yet modeled.
-  \item Scalability to T-Social (5.7M nodes) requires mini-batch training strategies.
-\end{itemize}
+\textbf{Limitations.}
+Results depend on LLM API availability; KMeans assumes spherical clusters; temporal dynamics are not modeled; T-Social (5.7M nodes) requires mini-batch training.
 
+\textbf{Conclusion.}
+RiskPilot demonstrates that GNN perception and LLM rule synthesis can be coupled into an autonomous, self-improving risk-control pipeline.
+By translating spectral graph anomalies into executable, backtested rules, it offers a practical path toward data-driven fraud policy evolution.
 
 % ============================================================
-% 6. Conclusion
-% ============================================================
-\section{Conclusion}
-
-We presented RiskPilot, an autonomous evolution engine for financial risk control rules.
-By bridging GNN anomaly detection with LLM rule generation through structured risk insights, and closing the loop via sandbox validation and knowledge base accumulation, RiskPilot enables risk control systems to become smarter over time.
-Experiments on T-Finance demonstrate the effectiveness of spectral-based anomaly detection and the feasibility of the proposed pipeline architecture.
-
-
-% ============================================================
-% References
-% ============================================================
+\balance
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}
+
+% ============================================================
+\appendix
+\section{Appendix}
+\label{app:main}
+
+\subsection{Classical Baseline Details}
+\label{app:baselines}
+Table~\ref{tab:trad} lists full results on T-Finance (representative; Yelp and Amazon follow the same trend).
+
+\begin{table}[h]
+\caption{T-Finance classical baselines vs.\ BWGNN.}
+\label{tab:trad}
+\footnotesize
+\begin{tabular}{lcccc}
+\toprule
+Method & Recall & Prec. & Macro-F1 & AUC \\
+\midrule
+Isolation Forest   & 0.1\% & 0.1\% & 47.6\% & 35.1\% \\
+LOF                & 2.5\% & 2.3\% & 48.7\% & 41.6\% \\
+One-Class SVM      & 32.4\% & 9.9\% & 53.0\% & 72.9\% \\
+PCA + Mahalanobis  & 0.1\% & 0.1\% & 47.6\% & 41.8\% \\
+\textbf{BWGNN}     & \textbf{76.0\%} & \textbf{88.2\%} & \textbf{90.4\%} & \textbf{96.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{T-Finance Closed-Loop Iteration}
+\label{app:iteration}
+Table~\ref{tab:iter} traces iteration on T-Finance (5 rounds max, early stop enabled).
+
+\begin{table}[h]
+\caption{T-Finance iteration progress.}
+\label{tab:iter}
+\footnotesize
+\begin{tabular}{crrrr}
+\toprule
+Round & Qual./Total & Recall & Prec. & FPR \\
+\midrule
+Initial & 0/5 & 44.0\% & 78.1\% & 0.59\% \\
+1       & 1/5 & 57.7\% & 68.2\% & 1.29\% \\
+2       & 2/4 & 81.6\% & 70.2\% & 1.66\% \\
+3       & 0/4 & 31.4\% & 72.3\% & 0.58\% \\
+4 (best)& 3/5 & 81.5\% & 71.0\% & 1.60\% \\
+\midrule
+Final KB & 5 rules & 69.9\% & 76.0\% & 3.50\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Example Qualified Rule}
+All qualified rules anchor on \texttt{gnn\_anomaly\_score}. Example (Amazon, Cluster~0):
+\begin{verbatim}
+IF gnn_anomaly_score >= 0.49
+AND feature_dim_19_zscore > 3.14
+THEN action = block
+\end{verbatim}
+Threshold search and iteration adjusted original LLM thresholds by 15--20\% to meet recall targets while keeping FPR $\leq 5\%$.
+
+\subsection{Reproducibility}
+Code, configs, and evaluation JSON are in the RiskPilot repository.
+Run \texttt{python -m src.pipeline --dataset tfinance --mode full} for the full loop, or \texttt{python scripts/run\_baselines.py --all} for baselines.
+LLM stage requires DashScope/OpenAI API keys; GNN and sandbox stages run without API access.
 
 \end{document}
