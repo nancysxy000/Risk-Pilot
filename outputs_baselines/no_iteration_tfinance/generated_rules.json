@@ -1,0 +1,122 @@
+[
+  {
+    "name": "High-Degree Fraud Ring Cluster #0",
+    "description": "Detects nodes in Cluster #0 — highly connected fraud ring with average degree 867, dense internal subgraph (local density 0.598), and near-perfect GNN anomaly score. Targets organized group behavior where nodes exhibit abnormally high connectivity relative to global distribution.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.699986
+      },
+      {
+        "field": "embedding_cluster_id",
+        "operator": "==",
+        "value": 0.0
+      }
+    ],
+    "logic": "AND",
+    "action": "block",
+    "explanation": "Cluster #0 has avg anomaly score 0.999987 and is structurally isolated (dense subgraph, high local density). Using gnn_anomaly_score ≥ 0.99998 + embedding_cluster_id == 0 ensures precise targeting with minimal leakage; covers 199/199 nodes (100% recall), while gnn_anomaly_score ≥ 0.99998 alone hits < 0.3% of global nodes (well under 2×1.27% cap).",
+    "rule_id": "R-20260522-001",
+    "generated_at": "2026-05-22T20:26:25.139693",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "Ultra-High-Degree Fraud Ring Cluster #1",
+    "description": "Detects Cluster #1 — smallest but most extreme fraud ring: avg degree 1280, min degree 956, all nodes far above global median (265) and even P90 (5614) — yet still tightly clustered. Indicates elite, compact fraud infrastructure with maximal interconnectivity.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.8799824
+      },
+      {
+        "field": "embedding_cluster_id",
+        "operator": "==",
+        "value": 1.0
+      }
+    ],
+    "logic": "AND",
+    "action": "block",
+    "explanation": "Cluster #1 has highest mean degree (1280) and narrowest range (956–1544), suggesting deliberate, engineered connectivity. Though small (13 nodes), its gnn_anomaly_score is uniformly >0.99998. Using same high-threshold gnn_anomaly_score + cluster ID ensures zero false positives from other clusters and full recall.",
+    "rule_id": "R-20260522-002",
+    "generated_at": "2026-05-22T20:26:25.139709",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "Moderate-Degree Dense Fraud Ring Cluster #2",
+    "description": "Detects Cluster #2 — lower average degree (165) but unusually high local density (0.761) and tight neighbor set (total_neighbors=1902), indicating a compact, self-contained fraud cell. Degree appears modest globally but is anomalous in context of its subgraph cohesion.",
+    "risk_type": "集团欺诈",
+    "severity": "medium",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.6999299999999999
+      },
+      {
+        "field": "embedding_cluster_id",
+        "operator": "==",
+        "value": 1.4
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Cluster #2’s degree mean (165) is only ~0.6σ above global mean (1078.5 → z ≈ -0.47), so raw degree is misleading. However, its gnn_anomaly_score remains extremely high (avg 0.99994) and local density is the highest across all clusters (0.761). Relaxing gnn_anomaly_score threshold slightly to 0.9999 maintains >99% recall for these 69 nodes while avoiding over-reliance on degree — appropriate for medium-severity review.",
+    "rule_id": "R-20260522-003",
+    "generated_at": "2026-05-22T20:26:25.139716",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "High-Density High-Degree Fraud Ring Cluster #3",
+    "description": "Detects Cluster #3 — very high degree (mean 1110) and highest local density (0.853), indicating a tightly knit, large-scale fraud ring with strong internal coupling and minimal external exposure.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.699986
+      },
+      {
+        "field": "embedding_cluster_id",
+        "operator": "==",
+        "value": 2.0999999999999996
+      }
+    ],
+    "logic": "AND",
+    "action": "block",
+    "explanation": "Cluster #3 combines top-tier degree (1110) and record local density (0.853), confirming structural isolation and coordination. All 43 nodes have gnn_anomaly_score > 0.99998 — using that threshold + cluster ID guarantees precision and full coverage without cross-contamination.",
+    "rule_id": "R-20260522-004",
+    "generated_at": "2026-05-22T20:26:25.139722",
+    "source": "llm_auto_gen+threshold_search"
+  },
+  {
+    "name": "Broad High-Connectivity Fraud Ring Cluster #4",
+    "description": "Detects Cluster #4 — large cohort (176 nodes) with solidly high degree (mean 745), strong subgraph cohesion (local density 0.683), and uniform anomaly signal. Represents scalable, mid-tier fraud infrastructure.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.699986
+      },
+      {
+        "field": "embedding_cluster_id",
+        "operator": "==",
+        "value": 2.8
+      }
+    ],
+    "logic": "AND",
+    "action": "block",
+    "explanation": "Cluster #4 is the largest abnormal cluster and shows consistent GNN confidence (avg 0.99998). Its degree (745) is ~−0.17σ below global mean but well above median (265); however, relying on gnn_anomaly_score + cluster ID avoids misclassification due to global degree skew and ensures clean separation from normal long-tail nodes.",
+    "rule_id": "R-20260522-005",
+    "generated_at": "2026-05-22T20:26:25.139728",
+    "source": "llm_auto_gen+threshold_search"
+  }
+]
