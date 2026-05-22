@@ -1,0 +1,84 @@
+{
+  "total_rules": 5,
+  "qualified_rules": 0,
+  "individual_results": [
+    {
+      "rule_id": "R-STAT-20260522-000",
+      "name": "Statistical-Cluster0",
+      "tp": 547,
+      "fp": 264,
+      "tn": 39013,
+      "fn": 6130,
+      "recall": 0.08192301932005391,
+      "precision": 0.6744759556103576,
+      "fpr": 0.0067214909489013925,
+      "f1": 0.14610042735042736,
+      "flagged": 811,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-STAT-20260522-001",
+      "name": "Statistical-Cluster1",
+      "tp": 452,
+      "fp": 472,
+      "tn": 38805,
+      "fn": 6225,
+      "recall": 0.06769507263741201,
+      "precision": 0.48917748917748916,
+      "fpr": 0.012017211090460066,
+      "f1": 0.11893171951059071,
+      "flagged": 924,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-STAT-20260522-002",
+      "name": "Statistical-Cluster2",
+      "tp": 34,
+      "fp": 4,
+      "tn": 39273,
+      "fn": 6643,
+      "recall": 0.005092107233787629,
+      "precision": 0.8947368421052632,
+      "fpr": 0.00010184077195305141,
+      "f1": 0.010126582278481013,
+      "flagged": 38,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-STAT-20260522-003",
+      "name": "Statistical-Cluster3",
+      "tp": 378,
+      "fp": 152,
+      "tn": 39125,
+      "fn": 6299,
+      "recall": 0.056612251010933055,
+      "precision": 0.7132075471698113,
+      "fpr": 0.0038699493342159532,
+      "f1": 0.10489801581795477,
+      "flagged": 530,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-STAT-20260522-004",
+      "name": "Statistical-Cluster4",
+      "tp": 672,
+      "fp": 1127,
+      "tn": 38150,
+      "fn": 6005,
+      "recall": 0.10064400179721432,
+      "precision": 0.3735408560311284,
+      "fpr": 0.028693637497772234,
+      "f1": 0.15856536101934873,
+      "flagged": 1799,
+      "qualified": false
+    }
+  ],
+  "combined_result": {
+    "combined_recall": 0.17957166392092258,
+    "combined_precision": 0.4681764935572042,
+    "combined_fpr": 0.034676782850014,
+    "total_flagged": 2561,
+    "coverage": 0.17957166392092258
+  },
+  "qualified_rule_ids": []
+}

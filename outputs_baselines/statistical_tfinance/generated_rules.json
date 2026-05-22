@@ -1,0 +1,127 @@
+[
+  {
+    "name": "Statistical-Cluster0",
+    "description": "Auto-generated rule for risk pattern #0 (296 nodes, avg anomaly score 1.000). Salient feature dims: []. Conditions derived from cluster z-scores and degree statistics.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.8957759999999999
+      },
+      {
+        "field": "node_degree",
+        "operator": ">=",
+        "value": 207.2
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Statistical rule for cluster 0 with 2 conditions. Derived from z-scores of 0 salient feature dimensions.",
+    "rule_id": "R-STAT-20260522-000",
+    "generated_at": "2026-05-22T19:56:05.997186",
+    "source": "statistical_auto_gen+threshold_search"
+  },
+  {
+    "name": "Statistical-Cluster1",
+    "description": "Auto-generated rule for risk pattern #1 (10 nodes, avg anomaly score 1.000). Salient feature dims: []. Conditions derived from cluster z-scores and degree statistics.",
+    "risk_type": "集团欺诈",
+    "severity": "medium",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.8957759999999999
+      },
+      {
+        "field": "node_degree",
+        "operator": ">=",
+        "value": 446.59999999999997
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Statistical rule for cluster 1 with 2 conditions. Derived from z-scores of 0 salient feature dimensions.",
+    "rule_id": "R-STAT-20260522-001",
+    "generated_at": "2026-05-22T19:56:05.997210",
+    "source": "statistical_auto_gen+threshold_search"
+  },
+  {
+    "name": "Statistical-Cluster2",
+    "description": "Auto-generated rule for risk pattern #2 (35 nodes, avg anomaly score 1.000). Salient feature dims: []. Conditions derived from cluster z-scores and degree statistics.",
+    "risk_type": "集团欺诈",
+    "severity": "medium",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.895888
+      },
+      {
+        "field": "node_degree",
+        "operator": ">=",
+        "value": 394.09999999999997
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Statistical rule for cluster 2 with 2 conditions. Derived from z-scores of 0 salient feature dimensions.",
+    "rule_id": "R-STAT-20260522-002",
+    "generated_at": "2026-05-22T19:56:05.997220",
+    "source": "statistical_auto_gen+threshold_search"
+  },
+  {
+    "name": "Statistical-Cluster3",
+    "description": "Auto-generated rule for risk pattern #3 (6 nodes, avg anomaly score 1.000). Salient feature dims: [0]. Conditions derived from cluster z-scores and degree statistics.",
+    "risk_type": "集团欺诈",
+    "severity": "medium",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.8476819999999999
+      },
+      {
+        "field": "feature_dim_0_zscore",
+        "operator": ">=",
+        "value": 0.8889999999999999
+      },
+      {
+        "field": "node_degree",
+        "operator": ">=",
+        "value": 579.92
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Statistical rule for cluster 3 with 3 conditions. Derived from z-scores of 1 salient feature dimensions.",
+    "rule_id": "R-STAT-20260522-003",
+    "generated_at": "2026-05-22T19:56:05.997232",
+    "source": "statistical_auto_gen+threshold_search"
+  },
+  {
+    "name": "Statistical-Cluster4",
+    "description": "Auto-generated rule for risk pattern #4 (153 nodes, avg anomaly score 1.000). Salient feature dims: []. Conditions derived from cluster z-scores and degree statistics.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.8957759999999999
+      },
+      {
+        "field": "node_degree",
+        "operator": ">=",
+        "value": 322.7
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Statistical rule for cluster 4 with 2 conditions. Derived from z-scores of 0 salient feature dimensions.",
+    "rule_id": "R-STAT-20260522-004",
+    "generated_at": "2026-05-22T19:56:05.997243",
+    "source": "statistical_auto_gen+threshold_search"
+  }
+]

@@ -1,0 +1,182 @@
+[
+  {
+    "name": "Statistical-Cluster0",
+    "description": "Auto-generated rule for risk pattern #0 (180 nodes, avg anomaly score 0.986). Salient feature dims: [15, 22]. Conditions derived from cluster z-scores and degree statistics.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.55209
+      },
+      {
+        "field": "feature_dim_15_zscore",
+        "operator": "<=",
+        "value": -1.7939999999999998
+      },
+      {
+        "field": "feature_dim_22_zscore",
+        "operator": ">=",
+        "value": 0.749
+      },
+      {
+        "field": "node_degree",
+        "operator": ">=",
+        "value": 49.0
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Statistical rule for cluster 0 with 4 conditions. Derived from z-scores of 2 salient feature dimensions.",
+    "rule_id": "R-STAT-20260522-000",
+    "generated_at": "2026-05-22T19:52:08.961572",
+    "source": "statistical_auto_gen+threshold_search"
+  },
+  {
+    "name": "Statistical-Cluster1",
+    "description": "Auto-generated rule for risk pattern #1 (17 nodes, avg anomaly score 0.996). Salient feature dims: [0, 24]. Conditions derived from cluster z-scores and degree statistics.",
+    "risk_type": "集团欺诈",
+    "severity": "medium",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.55755
+      },
+      {
+        "field": "feature_dim_0_zscore",
+        "operator": ">=",
+        "value": 0.784
+      },
+      {
+        "field": "feature_dim_24_zscore",
+        "operator": "<=",
+        "value": -1.7108
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Statistical rule for cluster 1 with 3 conditions. Derived from z-scores of 2 salient feature dimensions.",
+    "rule_id": "R-STAT-20260522-001",
+    "generated_at": "2026-05-22T19:52:08.961602",
+    "source": "statistical_auto_gen+threshold_search"
+  },
+  {
+    "name": "Statistical-Cluster2",
+    "description": "Auto-generated rule for risk pattern #2 (61 nodes, avg anomaly score 0.997). Salient feature dims: [3, 15, 20, 21, 22]. Conditions derived from cluster z-scores and degree statistics.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.6061759999999999
+      },
+      {
+        "field": "feature_dim_3_zscore",
+        "operator": "<=",
+        "value": -2.015
+      },
+      {
+        "field": "feature_dim_15_zscore",
+        "operator": "<=",
+        "value": -2.3400000000000003
+      },
+      {
+        "field": "feature_dim_20_zscore",
+        "operator": ">=",
+        "value": 0.8049999999999999
+      },
+      {
+        "field": "feature_dim_21_zscore",
+        "operator": ">=",
+        "value": 0.8889999999999999
+      },
+      {
+        "field": "feature_dim_22_zscore",
+        "operator": ">=",
+        "value": 1.5959999999999999
+      },
+      {
+        "field": "node_degree",
+        "operator": ">=",
+        "value": 60.199999999999996
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Statistical rule for cluster 2 with 7 conditions. Derived from z-scores of 5 salient feature dimensions.",
+    "rule_id": "R-STAT-20260522-002",
+    "generated_at": "2026-05-22T19:52:08.961620",
+    "source": "statistical_auto_gen+threshold_search"
+  },
+  {
+    "name": "Statistical-Cluster3",
+    "description": "Auto-generated rule for risk pattern #3 (185 nodes, avg anomaly score 0.991). Salient feature dims: [15, 21, 22]. Conditions derived from cluster z-scores and degree statistics.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.55475
+      },
+      {
+        "field": "feature_dim_15_zscore",
+        "operator": "<=",
+        "value": -2.249
+      },
+      {
+        "field": "feature_dim_21_zscore",
+        "operator": ">=",
+        "value": 0.735
+      },
+      {
+        "field": "feature_dim_22_zscore",
+        "operator": ">=",
+        "value": 1.057
+      },
+      {
+        "field": "node_degree",
+        "operator": ">=",
+        "value": 64.39999999999999
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Statistical rule for cluster 3 with 5 conditions. Derived from z-scores of 3 salient feature dimensions.",
+    "rule_id": "R-STAT-20260522-003",
+    "generated_at": "2026-05-22T19:52:08.961632",
+    "source": "statistical_auto_gen+threshold_search"
+  },
+  {
+    "name": "Statistical-Cluster4",
+    "description": "Auto-generated rule for risk pattern #4 (57 nodes, avg anomaly score 0.988). Salient feature dims: [0, 24]. Conditions derived from cluster z-scores and degree statistics.",
+    "risk_type": "集团欺诈",
+    "severity": "high",
+    "conditions": [
+      {
+        "field": "gnn_anomaly_score",
+        "operator": ">=",
+        "value": 0.5529999999999999
+      },
+      {
+        "field": "feature_dim_0_zscore",
+        "operator": ">=",
+        "value": 0.756
+      },
+      {
+        "field": "feature_dim_24_zscore",
+        "operator": "<=",
+        "value": -1.0919999999999999
+      }
+    ],
+    "logic": "AND",
+    "action": "review",
+    "explanation": "Statistical rule for cluster 4 with 3 conditions. Derived from z-scores of 2 salient feature dimensions.",
+    "rule_id": "R-STAT-20260522-004",
+    "generated_at": "2026-05-22T19:52:08.961640",
+    "source": "statistical_auto_gen+threshold_search"
+  }
+]
