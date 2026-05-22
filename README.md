@@ -258,6 +258,7 @@ Risk-Pilot-main/
 ├── outputs_amazon/                    # Amazon 基线输出
 ├── outputs_yelp_ablation/             # Yelp 消融实验输出
 ├── outputs_amazon_ablation/           # Amazon 消融实验输出
+├── outputs_ablation_no_gnn/           # T-Finance 消融实验输出
 │
 ├── notebooks/                         # 实验 Notebook
 └── tests/
@@ -464,13 +465,24 @@ GNN 检测到 500 个高风险节点，聚类为 5 种风险模式。
 
 ## 消融实验
 
-为了验证 `gnn_anomaly_score` 字段在规则中的实际贡献，我们在 Yelp 和 Amazon 上进行了消融实验: 去掉 GNN 字段，只允许 LLM 使用 `node_degree`、`node_degree_zscore`、`feature_dim_X`、`feature_dim_X_zscore` 生成规则。
+为了验证 `gnn_anomaly_score` 字段在规则中的实际贡献，我们在 T-Finance、Yelp 和 Amazon 三个数据集上进行了消融实验: 去掉 GNN 字段，只允许 LLM 使用 `node_degree`、`node_degree_zscore`、`feature_dim_X`、`feature_dim_X_zscore` 生成规则。
 
 ### 消融实验设置
 
 - **基线 (Baseline)**: 规则可使用全部 6 个字段 (含 gnn_anomaly_score, embedding_cluster_id)
 - **消融 (No GNN Fields)**: 规则只能使用 4 个图统计字段 (degree + feature)
 - **方法**: 通过 `configs/ablation_*_no_gnn.yaml` 配置文件控制，pipeline 自动选择对应的 Prompt 模板并禁用 GNN 输出注入
+
+### T-Finance 消融结果
+
+| 指标 | 基线 (含 GNN 字段) | 消融 (无 GNN 字段) | 变化 |
+|------|-------------------|-------------------|------|
+| Combined Recall | **69.85%** | 0.28% | **-69.57%** |
+| Combined Precision | **76.04%** | 0.35% | **-75.69%** |
+| FPR | 3.50% | 3.74% | +0.24% |
+| 合格规则数 | **12** | **0** | **-12** |
+
+**解读**: T-Finance 的消融效果最为极端 — Recall 从 70% 断崖式跌至 0.28%，说明纯特征阈值规则在 10 维特征上几乎完全失效。GNN 分数是规则有效性的唯一支柱。
 
 ### Yelp 消融结果
 
@@ -492,9 +504,10 @@ GNN 检测到 500 个高风险节点，聚类为 5 种风险模式。
 
 ### 消融实验结论
 
-1. **`gnn_anomaly_score` 是规则质量的核心支柱**: Amazon 上去掉后 Recall 从 80% 跌至 49%，Precision 从 89% 跌至 43%，合格规则从 6 条降为 0
+1. **`gnn_anomaly_score` 是规则质量的核心支柱**: 三个数据集上一致验证 — T-Finance Recall -69.6%，Amazon Recall -30.6%，合格规则全部归零
 2. **GNN 字段的核心作用是精确过滤**: Yelp 消融中 Recall 反而微升 (+3.5%)，但 Precision 暴跌 (-17.3%)，FPR 飙升 (+10.3%)。没有 GNN 分数作为过滤条件，规则会放宽到误杀大量正常节点
 3. **规则本质上是 GNN 判断的可解释包装**: 所有合格规则的第一条件都是 `gnn_anomaly_score >= 0.68`，然后加 degree/feature 条件细分风险类型。规则继承了 GNN 的检测能力，并增加了业务可解释性
+4. **特征维度越低越依赖 GNN**: T-Finance (10 维) 消融后 Recall 仅 0.28%，Amazon (25 维) 还有 49.2%，说明低维特征本身不足以区分异常
 
 ---
 
@@ -555,6 +568,7 @@ GNN 检测到 500 个高风险节点，聚类为 5 种风险模式。
 | 初始版本 | 2.4% | 0.75% | 15.6% | **0 条** | 仅 degree/feature 阈值规则 |
 | 第二次优化 | **81.5%** | **71.0%** | **1.60%** | **12 条** | +GNN 嵌入字段 +CoT Prompt +阈值搜索 +迭代稳定性 |
 | 跨数据集扩展 | 79.8% | 88.8% | 0.75% | **18 条** (TF+AM) | +Yelp/Amazon 兼容 +消融实验 |
+| 消融实验验证 | — | — | — | 0 条 (无GNN) | 证明 GNN 字段是规则质量的核心 |
 
 ---
 
@@ -590,7 +604,7 @@ GNN 检测到 500 个高风险节点，聚类为 5 种风险模式。
 1. **GNN + LLM 协同**: 将图神经网络的结构化风险感知与 LLM 的规则生成能力结合，规则直接继承 GNN 的检测精度
 2. **自主进化闭环**: GNN 感知 → LLM 生成 → 沙盒验证 → 知识库沉淀 → 反馈优化，规则越迭代越精准
 3. **GNN 嵌入驱动规则**: 规则可直接使用 `gnn_anomaly_score` 字段，解决了简单阈值规则无法有效表达图结构模式的核心瓶颈
-4. **消融实验验证**: 通过禁用 GNN 字段的对照实验，量化证明了 `gnn_anomaly_score` 对规则质量的贡献 (Amazon Recall -30.6%, Precision -46.0%)
+4. **消融实验验证**: 在三个数据集上通过禁用 GNN 字段的对照实验，量化证明了 `gnn_anomaly_score` 对规则质量的贡献 (T-Finance Recall -69.6%, Amazon Recall -30.6%, 三数据集合格规则全部归零)
 5. **Chain-of-Thought Prompt**: 引导 LLM 先分析分布差异再设定阈值，避免随意出值
 6. **定向反馈优化**: 不再传整份评估报告给 LLM，而是为每条规则生成具体诊断 (差距 + 方向 + 幅度)
 7. **阈值微调搜索**: LLM 生成规则后自动贪心搜索最优阈值，作为规则质量保底

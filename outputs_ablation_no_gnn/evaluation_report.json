@@ -1,0 +1,56 @@
+{
+  "total_rules": 3,
+  "qualified_rules": 0,
+  "individual_results": [
+    {
+      "rule_id": "R-20260522-OPT-001",
+      "name": "High-Degree Fraud Ring Candidate",
+      "tp": 5,
+      "fp": 1078,
+      "tn": 36475,
+      "fn": 1799,
+      "recall": 0.002771618625277162,
+      "precision": 0.0046168051708217915,
+      "fpr": 0.028706095385188934,
+      "f1": 0.0034638032559750607,
+      "flagged": 1083,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260522-OPT-002",
+      "name": "Feature-Dim0-Outlier Fraud Ring",
+      "tp": 0,
+      "fp": 404,
+      "tn": 37149,
+      "fn": 1804,
+      "recall": 0.0,
+      "precision": 0.0,
+      "fpr": 0.01075812851170346,
+      "f1": 0,
+      "flagged": 404,
+      "qualified": false
+    },
+    {
+      "rule_id": "R-20260522-OPT-003",
+      "name": "Ultra-High-Degree Fraud Ring",
+      "tp": 3,
+      "fp": 306,
+      "tn": 37247,
+      "fn": 1801,
+      "recall": 0.0016629711751662971,
+      "precision": 0.009708737864077669,
+      "fpr": 0.008148483476686284,
+      "f1": 0.002839564600094652,
+      "flagged": 309,
+      "qualified": false
+    }
+  ],
+  "combined_result": {
+    "combined_recall": 0.002771618625277162,
+    "combined_precision": 0.0035486160397444995,
+    "combined_fpr": 0.037387159481266474,
+    "total_flagged": 1409,
+    "coverage": 0.002771618625277162
+  },
+  "qualified_rule_ids": []
+}
